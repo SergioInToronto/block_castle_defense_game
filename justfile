@@ -34,3 +34,6 @@ format-check:
 
 # Run both linting and formatting
 check: lint format-check
+
+# Fix and format code before committing
+precommit: lint-fix format
