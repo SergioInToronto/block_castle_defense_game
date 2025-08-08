@@ -34,16 +34,6 @@ class VoxelGame {
         this.pitch = 0;
         this.yaw = 0;
 
-        // Spear settings
-        this.spear = {
-            mesh: null,
-            isAttacking: false,
-            attackDuration: 0.3,
-            attackTimer: 0,
-            originalPosition: new THREE.Vector3(0.3, -0.2, -0.5),
-            attackPosition: new THREE.Vector3(0.3, -0.2, -1.2),
-        };
-
         this.init();
     }
 
@@ -67,9 +57,6 @@ class VoxelGame {
 
         // Create player
         this.createPlayer();
-
-        // Create spear
-        this.createSpear();
 
         // Setup controls
         this.setupControls();
@@ -258,33 +245,6 @@ class VoxelGame {
         this.player.mesh = playerGroup;
     }
 
-    createSpear() {
-        // Create spear group
-        const spearGroup = new THREE.Group();
-
-        // Spear shaft (wooden handle)
-        const shaftGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8);
-        const shaftMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-        const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
-        shaft.rotation.x = Math.PI / 2; // Rotate to point forward
-        spearGroup.add(shaft);
-
-        // Spear tip (metal)
-        const tipGeometry = new THREE.ConeGeometry(0.04, 0.2, 6);
-        const tipMaterial = new THREE.MeshLambertMaterial({ color: 0xc0c0c0 });
-        const tip = new THREE.Mesh(tipGeometry, tipMaterial);
-        tip.position.z = 0.85; // Position at end of shaft
-        tip.rotation.x = Math.PI / 2; // Rotate to point forward
-        spearGroup.add(tip);
-
-        // Position spear relative to camera
-        spearGroup.position.copy(this.spear.originalPosition);
-
-        // Attach spear to camera so it follows view
-        this.camera.add(spearGroup);
-        this.spear.mesh = spearGroup;
-    }
-
     setupControls() {
         // Keyboard controls
         document.addEventListener('keydown', event => {
@@ -304,16 +264,9 @@ class VoxelGame {
             }
         });
 
-        // Mouse click events
+        // Click to lock pointer
         this.renderer.domElement.addEventListener('click', () => {
             this.renderer.domElement.requestPointerLock();
-        });
-
-        this.renderer.domElement.addEventListener('mousedown', event => {
-            if (event.button === 0 && document.pointerLockElement === this.renderer.domElement) {
-                // Left click - attack with spear
-                this.startSpearAttack();
-            }
         });
 
         // Handle window resize
@@ -322,46 +275,6 @@ class VoxelGame {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
-    }
-
-    startSpearAttack() {
-        if (!this.spear.isAttacking) {
-            this.spear.isAttacking = true;
-            this.spear.attackTimer = 0;
-        }
-    }
-
-    updateSpearAnimation(deltaTime) {
-        if (this.spear.isAttacking) {
-            this.spear.attackTimer += deltaTime;
-
-            // Calculate animation progress (0 to 1)
-            const progress = Math.min(this.spear.attackTimer / this.spear.attackDuration, 1);
-
-            // Use easing function for smooth animation
-            const easeProgress =
-                progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-            // Interpolate between original and attack position
-            const currentPosition = this.spear.originalPosition
-                .clone()
-                .lerp(this.spear.attackPosition, easeProgress);
-
-            // Apply position to spear
-            if (this.spear.mesh) {
-                this.spear.mesh.position.copy(currentPosition);
-            }
-
-            // End animation when complete
-            if (progress >= 1) {
-                this.spear.isAttacking = false;
-                this.spear.attackTimer = 0;
-                // Return to original position
-                if (this.spear.mesh) {
-                    this.spear.mesh.position.copy(this.spear.originalPosition);
-                }
-            }
-        }
     }
 
     handleInput(deltaTime) {
@@ -515,7 +428,6 @@ class VoxelGame {
 
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
-        this.updateSpearAnimation(deltaTime);
         this.updateCamera();
 
         this.renderer.render(this.scene, this.camera);
