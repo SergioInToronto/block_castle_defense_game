@@ -4,11 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Block Castle Defense Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #87CEEB;
+            font-family: system-ui, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+    </style>
 </head>
 <body>
-    <div id="app">
-        <h1>Hello World!</h1>
-        <p>Welcome to your new JavaScript project powered by Vite.</p>
+    <div id="game-container">
+        <div id="ui">
+            <h3>Block Castle Defense</h3>
+            <p>Use WASD to move, mouse to look around, R to reset position</p>
+        </div>
     </div>
     <script type="module" src="/src/main.js"></script>
 </body>
