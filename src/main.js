@@ -18,7 +18,7 @@ class VoxelGame {
             position: new THREE.Vector3(100, 20, 100),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 10,
-            jumpPower: 8,
+            jumpPower: 25,
             onGround: false,
             mesh: null
         };
@@ -176,7 +176,8 @@ class VoxelGame {
         playerGroup.add(rightFoot);
         
         playerGroup.position.copy(this.player.position);
-        this.scene.add(playerGroup);
+        // Don't add player to scene - keep invisible for first-person view
+        // this.scene.add(playerGroup);
         this.player.mesh = playerGroup;
     }
     
@@ -247,33 +248,92 @@ class VoxelGame {
         // Apply gravity
         this.player.velocity.y -= 25 * deltaTime;
         
-        // Update position
-        const newPosition = this.player.position.clone();
-        newPosition.add(this.player.velocity.clone().multiplyScalar(deltaTime));
+        // Handle movement with proper collision detection
+        const oldPosition = this.player.position.clone();
+        const velocity = this.player.velocity.clone().multiplyScalar(deltaTime);
         
-        // Simple collision detection (check if position would be inside a block)
-        const playerFeet = Math.floor(newPosition.y);
-        const playerHead = Math.floor(newPosition.y + 1.9);
-        const playerX = Math.floor(newPosition.x);
-        const playerZ = Math.floor(newPosition.z);
+        // Try to move in each axis separately for better collision handling
+        // X movement
+        let newX = oldPosition.x + velocity.x;
+        if (!this.checkCollision(newX, oldPosition.y, oldPosition.z)) {
+            this.player.position.x = newX;
+        } else {
+            this.player.velocity.x = 0;
+        }
         
-        // Check for ground collision
-        if (this.world.has(`${playerX},${playerFeet},${playerZ}`) || newPosition.y <= 0) {
-            this.player.velocity.y = 0;
-            this.player.onGround = true;
-            newPosition.y = Math.max(playerFeet + 1, 1);
+        // Z movement  
+        let newZ = this.player.position.z + velocity.z;
+        if (!this.checkCollision(this.player.position.x, oldPosition.y, newZ)) {
+            this.player.position.z = newZ;
+        } else {
+            this.player.velocity.z = 0;
+        }
+        
+        // Y movement (gravity/jumping)
+        let newY = this.player.position.y + velocity.y;
+        
+        // Check if landing on ground
+        if (velocity.y <= 0) { // Falling or on ground
+            const groundY = this.getGroundHeight(this.player.position.x, this.player.position.z);
+            if (newY <= groundY + 0.1) { // Small epsilon for ground detection
+                this.player.position.y = groundY;
+                this.player.velocity.y = 0;
+                this.player.onGround = true;
+            } else {
+                this.player.position.y = newY;
+                this.player.onGround = false;
+            }
+        } else { // Jumping up
+            if (!this.checkCollision(this.player.position.x, newY + 1.9, this.player.position.z)) {
+                this.player.position.y = newY;
+                this.player.onGround = false;
+            } else {
+                this.player.velocity.y = 0;
+            }
         }
         
         // Keep player within world bounds
-        newPosition.x = Math.max(1, Math.min(this.worldSize - 1, newPosition.x));
-        newPosition.z = Math.max(1, Math.min(this.worldSize - 1, newPosition.z));
-        
-        this.player.position.copy(newPosition);
+        this.player.position.x = Math.max(0.5, Math.min(this.worldSize - 0.5, this.player.position.x));
+        this.player.position.z = Math.max(0.5, Math.min(this.worldSize - 0.5, this.player.position.z));
         
         // Update player mesh position
         if (this.player.mesh) {
             this.player.mesh.position.copy(this.player.position);
         }
+    }
+    
+    checkCollision(x, y, z) {
+        // Check if the player (0.6 wide, 2 tall) would collide with any blocks
+        const minX = Math.floor(x - 0.3);
+        const maxX = Math.floor(x + 0.3);
+        const minZ = Math.floor(z - 0.3);
+        const maxZ = Math.floor(z + 0.3);
+        const minY = Math.floor(y);
+        const maxY = Math.floor(y + 1.9);
+        
+        for (let bx = minX; bx <= maxX; bx++) {
+            for (let bz = minZ; bz <= maxZ; bz++) {
+                for (let by = minY; by <= maxY; by++) {
+                    if (this.world.has(`${bx},${by},${bz}`)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    getGroundHeight(x, z) {
+        // Find the highest block at this x,z position
+        const blockX = Math.floor(x);
+        const blockZ = Math.floor(z);
+        
+        for (let y = 50; y >= 0; y--) { // Search from high to low
+            if (this.world.has(`${blockX},${y},${blockZ}`)) {
+                return y + 1; // Player stands on top of block
+            }
+        }
+        return 0; // Default ground level
     }
     
     updateCamera() {
