@@ -3,7 +3,12 @@ import * as THREE from 'three';
 class VoxelGame {
     constructor() {
         this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.clock = new THREE.Clock();
 
@@ -20,7 +25,7 @@ class VoxelGame {
             speed: 10,
             jumpPower: 10,
             onGround: false,
-            mesh: null
+            mesh: null,
         };
 
         // Input handling
@@ -35,7 +40,7 @@ class VoxelGame {
     init() {
         // Setup renderer
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setClearColor(0x87CEEB);
+        this.renderer.setClearColor(0x87ceeb);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('game-container').appendChild(this.renderer.domElement);
@@ -88,8 +93,11 @@ class VoxelGame {
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
                 // Simple height map using noise-like function
-                const height = Math.floor(10 + 5 * Math.sin(x * 0.02) * Math.cos(z * 0.02) +
-                              3 * Math.sin(x * 0.05) * Math.sin(z * 0.05));
+                const height = Math.floor(
+                    10 +
+                        5 * Math.sin(x * 0.02) * Math.cos(z * 0.02) +
+                        3 * Math.sin(x * 0.05) * Math.sin(z * 0.05)
+                );
                 terrainData[`${x},${z}`] = height;
 
                 // Store block positions for collision detection
@@ -112,7 +120,9 @@ class VoxelGame {
         const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
 
         // Count blocks for each material
-        let grassCount = 0, dirtCount = 0, stoneCount = 0;
+        let grassCount = 0,
+            dirtCount = 0,
+            stoneCount = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
@@ -139,7 +149,9 @@ class VoxelGame {
 
         // Set instance positions
         const matrix = new THREE.Matrix4();
-        let grassIndex = 0, dirtIndex = 0, stoneIndex = 0;
+        let grassIndex = 0,
+            dirtIndex = 0,
+            stoneIndex = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
@@ -235,16 +247,16 @@ class VoxelGame {
 
     setupControls() {
         // Keyboard controls
-        document.addEventListener('keydown', (event) => {
+        document.addEventListener('keydown', event => {
             this.keys[event.code] = true;
         });
 
-        document.addEventListener('keyup', (event) => {
+        document.addEventListener('keyup', event => {
             this.keys[event.code] = false;
         });
 
         // Mouse controls for looking around
-        document.addEventListener('mousemove', (event) => {
+        document.addEventListener('mousemove', event => {
             if (document.pointerLockElement === this.renderer.domElement) {
                 this.yaw -= event.movementX * 0.002;
                 this.pitch -= event.movementY * 0.002;
@@ -306,7 +318,7 @@ class VoxelGame {
 
         // Try to move in each axis separately for better collision handling
         // X movement
-        let newX = oldPosition.x + velocity.x;
+        const newX = oldPosition.x + velocity.x;
         if (!this.checkCollision(newX, oldPosition.y, oldPosition.z)) {
             this.player.position.x = newX;
         } else {
@@ -314,7 +326,7 @@ class VoxelGame {
         }
 
         // Z movement
-        let newZ = this.player.position.z + velocity.z;
+        const newZ = this.player.position.z + velocity.z;
         if (!this.checkCollision(this.player.position.x, oldPosition.y, newZ)) {
             this.player.position.z = newZ;
         } else {
@@ -322,12 +334,14 @@ class VoxelGame {
         }
 
         // Y movement (gravity/jumping)
-        let newY = this.player.position.y + velocity.y;
+        const newY = this.player.position.y + velocity.y;
 
         // Check if landing on ground
-        if (velocity.y <= 0) { // Falling or on ground
+        if (velocity.y <= 0) {
+            // Falling or on ground
             const groundY = this.getGroundHeight(this.player.position.x, this.player.position.z);
-            if (newY <= groundY + 0.1) { // Small epsilon for ground detection
+            if (newY <= groundY + 0.1) {
+                // Small epsilon for ground detection
                 this.player.position.y = groundY;
                 this.player.velocity.y = 0;
                 this.player.onGround = true;
@@ -335,7 +349,8 @@ class VoxelGame {
                 this.player.position.y = newY;
                 this.player.onGround = false;
             }
-        } else { // Jumping up
+        } else {
+            // Jumping up
             if (!this.checkCollision(this.player.position.x, newY + 1.9, this.player.position.z)) {
                 this.player.position.y = newY;
                 this.player.onGround = false;
@@ -345,8 +360,14 @@ class VoxelGame {
         }
 
         // Keep player within world bounds
-        this.player.position.x = Math.max(0.5, Math.min(this.worldSize - 0.5, this.player.position.x));
-        this.player.position.z = Math.max(0.5, Math.min(this.worldSize - 0.5, this.player.position.z));
+        this.player.position.x = Math.max(
+            0.5,
+            Math.min(this.worldSize - 0.5, this.player.position.x)
+        );
+        this.player.position.z = Math.max(
+            0.5,
+            Math.min(this.worldSize - 0.5, this.player.position.z)
+        );
 
         // Update player mesh position
         if (this.player.mesh) {
@@ -380,7 +401,8 @@ class VoxelGame {
         const blockX = Math.floor(x);
         const blockZ = Math.floor(z);
 
-        for (let y = 50; y >= 0; y--) { // Search from high to low
+        for (let y = 50; y >= 0; y--) {
+            // Search from high to low
             if (this.world.has(`${blockX},${y},${blockZ}`)) {
                 return y + 1; // Player stands on top of block
             }

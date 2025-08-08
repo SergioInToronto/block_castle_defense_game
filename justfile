@@ -15,3 +15,22 @@ preview:
 # Install dependencies
 install:
     npm install
+
+# Check code with ESLint
+lint:
+    npm run lint
+
+# Fix linting issues automatically
+lint-fix:
+    npm run lint:fix
+
+# Format code with Prettier
+format:
+    npm run format
+
+# Check if code is formatted
+format-check:
+    npm run format:check
+
+# Run both linting and formatting
+check: lint format-check
