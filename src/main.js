@@ -83,36 +83,88 @@ class VoxelGame {
     }
     
     generateWorld() {
-        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
-        
-        // Create different materials for different block types
-        const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
-        const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-        const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
-        
-        // Generate a simple terrain
+        // Generate terrain data first
+        const terrainData = {};
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
                 // Simple height map using noise-like function
                 const height = Math.floor(10 + 5 * Math.sin(x * 0.02) * Math.cos(z * 0.02) + 
                               3 * Math.sin(x * 0.05) * Math.sin(z * 0.05));
+                terrainData[`${x},${z}`] = height;
                 
+                // Store block positions for collision detection
                 for (let y = 0; y <= height; y++) {
-                    const block = new THREE.Mesh(geometry, 
-                        y === height ? grassMaterial : 
-                        y > height - 3 ? dirtMaterial : stoneMaterial
-                    );
-                    
-                    block.position.set(x, y, z);
-                    block.castShadow = true;
-                    block.receiveShadow = true;
-                    this.scene.add(block);
-                    
-                    // Store block position for collision detection
                     this.world.set(`${x},${y},${z}`, true);
                 }
             }
         }
+        
+        // Use instanced rendering for better performance
+        this.createInstancedTerrain(terrainData);
+    }
+    
+    createInstancedTerrain(terrainData) {
+        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
+        
+        // Create materials
+        const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
+        const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+        
+        // Count blocks for each material
+        let grassCount = 0, dirtCount = 0, stoneCount = 0;
+        
+        for (let x = 0; x < this.worldSize; x += 1) {
+            for (let z = 0; z < this.worldSize; z += 1) {
+                const height = terrainData[`${x},${z}`];
+                for (let y = 0; y <= height; y++) {
+                    if (y === height) grassCount++;
+                    else if (y > height - 3) dirtCount++;
+                    else stoneCount++;
+                }
+            }
+        }
+        
+        // Create instanced meshes
+        const grassInstanced = new THREE.InstancedMesh(geometry, grassMaterial, grassCount);
+        const dirtInstanced = new THREE.InstancedMesh(geometry, dirtMaterial, dirtCount);
+        const stoneInstanced = new THREE.InstancedMesh(geometry, stoneMaterial, stoneCount);
+        
+        grassInstanced.castShadow = true;
+        grassInstanced.receiveShadow = true;
+        dirtInstanced.castShadow = true;
+        dirtInstanced.receiveShadow = true;
+        stoneInstanced.castShadow = true;
+        stoneInstanced.receiveShadow = true;
+        
+        // Set instance positions
+        const matrix = new THREE.Matrix4();
+        let grassIndex = 0, dirtIndex = 0, stoneIndex = 0;
+        
+        for (let x = 0; x < this.worldSize; x += 1) {
+            for (let z = 0; z < this.worldSize; z += 1) {
+                const height = terrainData[`${x},${z}`];
+                for (let y = 0; y <= height; y++) {
+                    matrix.setPosition(x, y, z);
+                    
+                    if (y === height) {
+                        grassInstanced.setMatrixAt(grassIndex++, matrix);
+                    } else if (y > height - 3) {
+                        dirtInstanced.setMatrixAt(dirtIndex++, matrix);
+                    } else {
+                        stoneInstanced.setMatrixAt(stoneIndex++, matrix);
+                    }
+                }
+            }
+        }
+        
+        grassInstanced.instanceMatrix.needsUpdate = true;
+        dirtInstanced.instanceMatrix.needsUpdate = true;
+        stoneInstanced.instanceMatrix.needsUpdate = true;
+        
+        this.scene.add(grassInstanced);
+        this.scene.add(dirtInstanced);
+        this.scene.add(stoneInstanced);
     }
     
     createPlayer() {
