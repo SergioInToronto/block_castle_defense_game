@@ -16,6 +16,7 @@ class VoxelGame {
         this.worldSize = 200;
         this.blockSize = 1;
         this.world = new Map();
+        this.waterLevel = 7; // Water appears at y=8 and below
 
         // Player settings
         this.spawnPosition = new THREE.Vector3(100, 20, 100);
@@ -144,19 +145,34 @@ class VoxelGame {
         const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
         const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
         const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+        const waterMaterial = new THREE.MeshLambertMaterial({
+            color: 0x4da6ff,
+            transparent: true,
+            opacity: 0.7,
+        });
 
         // Count blocks for each material
         let grassCount = 0,
             dirtCount = 0,
-            stoneCount = 0;
+            stoneCount = 0,
+            waterCount = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
                 const height = terrainData[`${x},${z}`];
+
+                // Count terrain blocks
                 for (let y = 0; y <= height; y++) {
                     if (y === height) grassCount++;
                     else if (y > height - 3) dirtCount++;
                     else stoneCount++;
+                }
+
+                // Count water blocks (fill areas below water level that are above terrain)
+                if (height < this.waterLevel) {
+                    for (let y = height + 1; y <= this.waterLevel; y++) {
+                        waterCount++;
+                    }
                 }
             }
         }
@@ -165,6 +181,8 @@ class VoxelGame {
         const grassInstanced = new THREE.InstancedMesh(geometry, grassMaterial, grassCount);
         const dirtInstanced = new THREE.InstancedMesh(geometry, dirtMaterial, dirtCount);
         const stoneInstanced = new THREE.InstancedMesh(geometry, stoneMaterial, stoneCount);
+        const waterInstanced =
+            waterCount > 0 ? new THREE.InstancedMesh(geometry, waterMaterial, waterCount) : null;
 
         grassInstanced.castShadow = true;
         grassInstanced.receiveShadow = true;
@@ -173,15 +191,23 @@ class VoxelGame {
         stoneInstanced.castShadow = true;
         stoneInstanced.receiveShadow = true;
 
+        if (waterInstanced) {
+            waterInstanced.castShadow = false;
+            waterInstanced.receiveShadow = true;
+        }
+
         // Set instance positions
         const matrix = new THREE.Matrix4();
         let grassIndex = 0,
             dirtIndex = 0,
-            stoneIndex = 0;
+            stoneIndex = 0,
+            waterIndex = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
             for (let z = 0; z < this.worldSize; z += 1) {
                 const height = terrainData[`${x},${z}`];
+
+                // Place terrain blocks
                 for (let y = 0; y <= height; y++) {
                     matrix.setPosition(x, y, z);
 
@@ -193,6 +219,14 @@ class VoxelGame {
                         stoneInstanced.setMatrixAt(stoneIndex++, matrix);
                     }
                 }
+
+                // Place water blocks
+                if (height < this.waterLevel && waterInstanced) {
+                    for (let y = height + 1; y <= this.waterLevel; y++) {
+                        matrix.setPosition(x, y, z);
+                        waterInstanced.setMatrixAt(waterIndex++, matrix);
+                    }
+                }
             }
         }
 
@@ -200,9 +234,17 @@ class VoxelGame {
         dirtInstanced.instanceMatrix.needsUpdate = true;
         stoneInstanced.instanceMatrix.needsUpdate = true;
 
+        if (waterInstanced) {
+            waterInstanced.instanceMatrix.needsUpdate = true;
+        }
+
         this.scene.add(grassInstanced);
         this.scene.add(dirtInstanced);
         this.scene.add(stoneInstanced);
+
+        if (waterInstanced) {
+            this.scene.add(waterInstanced);
+        }
     }
 
     createPlayer() {
@@ -530,13 +572,18 @@ class VoxelGame {
         direction.applyEuler(new THREE.Euler(0, this.yaw, 0));
         direction.normalize();
 
+        // Check if player is in water
+        const inWater = this.isPlayerInWater();
+        const speedMultiplier = inWater ? 0.5 : 1.0; // Slower movement in water
+        const jumpMultiplier = inWater ? 0.8 : 1.0; // Lower jump in water
+
         // Apply movement
-        this.player.velocity.x = direction.x * this.player.speed;
-        this.player.velocity.z = direction.z * this.player.speed;
+        this.player.velocity.x = direction.x * this.player.speed * speedMultiplier;
+        this.player.velocity.z = direction.z * this.player.speed * speedMultiplier;
 
         // Jump
         if (this.keys['Space'] && this.player.onGround) {
-            this.player.velocity.y = this.player.jumpPower;
+            this.player.velocity.y = this.player.jumpPower * jumpMultiplier;
             this.player.onGround = false;
         }
 
@@ -548,9 +595,24 @@ class VoxelGame {
         }
     }
 
+    isPlayerInWater() {
+        // Check if player's feet or body are in water level
+        const playerY = this.player.position.y;
+        return playerY <= this.waterLevel; // Player is in water if feet are at or below water level
+    }
+
     updatePhysics(deltaTime) {
-        // Apply gravity
-        this.player.velocity.y -= 25 * deltaTime;
+        // Check if player is in water for physics
+        const inWater = this.isPlayerInWater();
+
+        // Apply gravity (reduced in water)
+        const gravityForce = inWater ? 10 : 25;
+        this.player.velocity.y -= gravityForce * deltaTime;
+
+        // Water drag
+        if (inWater) {
+            this.player.velocity.y *= 0.9; // Slow vertical movement in water
+        }
 
         // Handle movement with proper collision detection
         const oldPosition = this.player.position.clone();
