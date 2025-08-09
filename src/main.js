@@ -430,6 +430,16 @@ class VoxelGame {
         }
     }
 
+    updateCoordinateDisplay() {
+        const x = Math.round(this.player.position.x * 10) / 10;
+        const y = Math.round(this.player.position.y * 10) / 10;
+        const z = Math.round(this.player.position.z * 10) / 10;
+
+        document.getElementById('coord-x').textContent = x.toString();
+        document.getElementById('coord-y').textContent = y.toString();
+        document.getElementById('coord-z').textContent = z.toString();
+    }
+
     updatePig(deltaTime) {
         if (!this.pig.mesh) return;
 
@@ -661,6 +671,7 @@ class VoxelGame {
         this.updatePig(deltaTime);
         this.updateCamera();
         this.updateBlockHighlight();
+        this.updateCoordinateDisplay();
 
         this.renderer.render(this.scene, this.camera);
     }
