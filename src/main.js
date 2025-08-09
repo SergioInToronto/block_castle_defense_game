@@ -154,11 +154,11 @@ class VoxelGame {
 
     setupLighting() {
         // Ambient light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
         this.scene.add(ambientLight);
 
         // Directional light (sun)
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
         directionalLight.position.set(200, 300, 200);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
@@ -308,10 +308,10 @@ class VoxelGame {
         container.appendChild(this.heldItem.renderer.domElement);
 
         // Add lighting to the held item scene (matching world lighting)
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
         this.heldItem.scene.add(ambientLight);
 
-        this.heldItem.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.heldItem.directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
         this.heldItem.directionalLight.position.set(200, 300, 200).normalize().multiplyScalar(5);
         this.heldItem.directionalLight.castShadow = true;
         this.heldItem.scene.add(this.heldItem.directionalLight);
