@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Terrain } from './terrain.js';
 
+
+const RENDER_DISTANCE = 1000; // Maximum render and culling distance
+
 class VoxelGame {
     constructor() {
         this.scene = new THREE.Scene();
@@ -8,7 +11,7 @@ class VoxelGame {
             75,
             window.innerWidth / window.innerHeight,
             0.1,
-            1000
+            RENDER_DISTANCE
         );
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.clock = new THREE.Clock();
@@ -119,7 +122,8 @@ class VoxelGame {
             this.blockSize,
             this.waterLevel,
             this.world,
-            this.scene
+            this.scene,
+            RENDER_DISTANCE
         );
 
         // Generate world
@@ -389,11 +393,11 @@ class VoxelGame {
         if (this.heldItem.directionalLight) {
             // World light direction: normalized (200, 300, 200)
             const worldLightDirection = new THREE.Vector3(200, 300, 200).normalize();
-            
+
             // Apply inverse camera rotation to keep light direction consistent with world
             const lightDirection = worldLightDirection.clone();
             lightDirection.applyEuler(new THREE.Euler(-this.pitch, -this.yaw, 0));
-            
+
             this.heldItem.directionalLight.position.copy(lightDirection.multiplyScalar(5));
         }
 

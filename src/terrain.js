@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 
 export class Terrain {
-    constructor(worldSize, blockSize, waterLevel, world, scene) {
+    constructor(worldSize, blockSize, waterLevel, world, scene, render_distance) {
         this.worldSize = worldSize;
         this.blockSize = blockSize;
         this.waterLevel = waterLevel;
         this.world = world;
         this.scene = scene;
-        
+
         // Culling properties
-        this.renderDistance = 60; // Maximum render distance
-        this.minRenderDistance = 2; // Minimum distance - don't cull blocks within this range
+        this.renderDistance = render_distance; // Maximum render distance
+        this.minRenderDistance = 10; // Minimum distance - don't cull blocks within this range
         this.instancedMeshes = {}; // Store instanced meshes for culling updates
         this.blockData = {}; // Store block positions and types for culling
         this.lastPlayerPosition = new THREE.Vector3();
@@ -282,7 +282,7 @@ export class Terrain {
         // Check if player moved enough to warrant a culling update
         const distanceMoved = playerPosition.distanceTo(this.lastPlayerPosition);
         const rotationChanged = Math.abs(playerYaw - this.lastPlayerRotation) > 0.1;
-        
+
         if (distanceMoved < this.cullingUpdateThreshold && !rotationChanged) {
             return;
         }
@@ -293,7 +293,7 @@ export class Terrain {
         // Update each block type
         Object.keys(this.blockData).forEach(blockType => {
             if (!this.instancedMeshes[blockType] || this.blockData[blockType].length === 0) return;
-            
+
             this.updateBlockTypeCulling(blockType, playerPosition, playerYaw);
         });
     }
@@ -303,7 +303,7 @@ export class Terrain {
         const blocks = this.blockData[blockType];
         const matrix = new THREE.Matrix4();
         const dummyMatrix = new THREE.Matrix4().makeScale(0, 0, 0); // Hidden block matrix
-        
+
         // Calculate player forward direction (180-degree view)
         const playerForward = new THREE.Vector3(
             -Math.sin(playerYaw),
@@ -312,18 +312,19 @@ export class Terrain {
         );
 
         let visibleIndex = 0;
-        
+
         blocks.forEach((block, index) => {
             const blockPosition = new THREE.Vector3(block.x, block.y, block.z);
             const distanceToPlayer = blockPosition.distanceTo(playerPosition);
-            
+
             // Distance culling
             if (distanceToPlayer > this.renderDistance) {
                 mesh.setMatrixAt(index, dummyMatrix);
                 return;
             }
 
-            // Don't cull blocks within minimum distance (prevents issues when looking up/down)
+            // Don't cull blocks within minimum distance. Prevents issues
+            // when walking backwards or looking up/down
             if (distanceToPlayer <= this.minRenderDistance) {
                 matrix.setPosition(block.x, block.y, block.z);
                 mesh.setMatrixAt(index, matrix);
@@ -333,11 +334,11 @@ export class Terrain {
             // Frustum culling (180-degree view)
             const toBlock = blockPosition.clone().sub(playerPosition).normalize();
             const dotProduct = toBlock.dot(playerForward);
-            
+
             // For 180-degree view, show blocks in front and to sides (dot product > -0.2)
             // Hide blocks behind player (dot product <= -0.2)
             const isInView = dotProduct > -0.2;
-            
+
             if (isInView) {
                 // Block is in view (front/sides), render it
                 matrix.setPosition(block.x, block.y, block.z);
