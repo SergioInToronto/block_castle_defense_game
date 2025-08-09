@@ -112,6 +112,15 @@
             background-color: #8b4513;
             border: 1px solid #654321;
         }
+        #held-item-container {
+            position: absolute;
+            bottom: 100px;
+            right: 100px;
+            width: 150px;
+            height: 150px;
+            z-index: 50;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +146,7 @@
             <div class="hotbar-slot" data-slot="4"></div>
             <div class="hotbar-slot" data-slot="5"></div>
         </div>
+        <div id="held-item-container"></div>
     </div>
     <script type="module" src="/src/main.js"></script>
 </body>

@@ -40,6 +40,17 @@ class VoxelGame {
         this.highlightBox = null;
         this.targetedBlock = null;
 
+        // Held item display
+        this.heldItem = {
+            mesh: null,
+            scene: null,
+            camera: null,
+            renderer: null,
+            animationTimer: 0,
+            baseRotation: { x: 0, y: 0, z: 0 },
+            bobOffset: 0,
+        };
+
         // Pig settings
         this.pig = {
             mesh: null,
@@ -120,6 +131,9 @@ class VoxelGame {
 
         // Initialize inventory
         this.initializeInventory();
+
+        // Setup held item display
+        this.setupHeldItemDisplay();
 
         // Start game loop
         this.animate();
@@ -255,7 +269,113 @@ class VoxelGame {
         if (slotIndex >= 0 && slotIndex < 6) {
             this.inventory.selectedSlot = slotIndex;
             this.updateHotbarDisplay();
+            this.updateHeldItemDisplay();
         }
+    }
+
+    setupHeldItemDisplay() {
+        // Create a separate scene for the held item
+        this.heldItem.scene = new THREE.Scene();
+
+        // Create a camera for the held item
+        this.heldItem.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+        this.heldItem.camera.position.set(0, 0, 2);
+
+        // Create a renderer for the held item
+        this.heldItem.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            premultipliedAlpha: false
+        });
+        this.heldItem.renderer.setSize(150, 150);
+        this.heldItem.renderer.setClearColor(0x000000, 0); // Transparent background
+        this.heldItem.renderer.shadowMap.enabled = true;
+        this.heldItem.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Add the renderer to the held item container
+        const container = document.getElementById('held-item-container');
+        container.appendChild(this.heldItem.renderer.domElement);
+
+        // Add lighting to the held item scene
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        this.heldItem.scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(2, 2, 2);
+        directionalLight.castShadow = true;
+        this.heldItem.scene.add(directionalLight);
+
+        // Initialize with current selected item
+        this.updateHeldItemDisplay();
+    }
+
+    updateHeldItemDisplay() {
+        // Remove existing held item mesh
+        if (this.heldItem.mesh) {
+            this.heldItem.scene.remove(this.heldItem.mesh);
+            this.heldItem.mesh = null;
+        }
+
+        const selectedItem = this.getSelectedItem();
+        if (selectedItem && selectedItem.count > 0) {
+            // Create held item mesh based on item type
+            if (selectedItem.type === 'dirt') {
+                this.createHeldBlock();
+            }
+        }
+    }
+
+    createHeldBlock() {
+        const geometry = new THREE.BoxGeometry(3.2, 3.2, 3.2);
+        const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+
+        this.heldItem.mesh = new THREE.Mesh(geometry, material);
+        this.heldItem.mesh.castShadow = true;
+        this.heldItem.mesh.receiveShadow = true;
+
+        // Set initial rotation and position
+        this.heldItem.mesh.rotation.set(-0.2, 0.3, 0.1);
+        this.heldItem.mesh.position.set(0.2, -0.2, 0);
+
+        // Store base rotation for animation
+        this.heldItem.baseRotation = {
+            x: this.heldItem.mesh.rotation.x,
+            y: this.heldItem.mesh.rotation.y,
+            z: this.heldItem.mesh.rotation.z
+        };
+
+        this.heldItem.scene.add(this.heldItem.mesh);
+    }
+
+    updateHeldItemAnimation(deltaTime, isWalking = false) {
+        if (!this.heldItem.mesh) return;
+
+        this.heldItem.animationTimer += deltaTime;
+
+        if (isWalking) {
+            // Walking bob animation
+            const bobSpeed = 8;
+            const bobAmount = 0.05;
+            const swayAmount = 0.02;
+
+            this.heldItem.bobOffset = Math.sin(this.heldItem.animationTimer * bobSpeed) * bobAmount;
+            this.heldItem.mesh.position.y = -0.2 + this.heldItem.bobOffset;
+
+            // Add slight sway
+            this.heldItem.mesh.rotation.z = this.heldItem.baseRotation.z +
+                Math.sin(this.heldItem.animationTimer * bobSpeed * 0.5) * swayAmount;
+        } else {
+            // Idle gentle sway
+            const idleSpeed = 1.5;
+            const idleAmount = 0.01;
+
+            this.heldItem.mesh.position.y = -0.2 + Math.sin(this.heldItem.animationTimer * idleSpeed) * idleAmount;
+            this.heldItem.mesh.rotation.z = this.heldItem.baseRotation.z +
+                Math.sin(this.heldItem.animationTimer * idleSpeed * 0.8) * idleAmount;
+        }
+
+        // Render the held item
+        this.heldItem.renderer.render(this.heldItem.scene, this.heldItem.camera);
     }
 
     generateWorld() {
@@ -1109,6 +1229,10 @@ class VoxelGame {
         this.updateCamera();
         this.updateBlockHighlight();
         this.updateCoordinateDisplay();
+
+        // Update held item animation
+        const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
+        this.updateHeldItemAnimation(deltaTime, isWalking);
 
         this.renderer.render(this.scene, this.camera);
     }
