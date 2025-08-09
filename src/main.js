@@ -159,6 +159,7 @@ class VoxelGame {
         const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
         const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
         const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+        const cobblestoneMaterial = new THREE.MeshLambertMaterial({ color: 0x6b6b6b });
         const waterMaterial = new THREE.MeshLambertMaterial({
             color: 0x4da6ff,
             transparent: true,
@@ -170,6 +171,7 @@ class VoxelGame {
         let grassCount = 0,
             dirtCount = 0,
             stoneCount = 0,
+            cobblestoneCount = 0,
             waterCount = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
@@ -192,10 +194,38 @@ class VoxelGame {
             }
         }
 
+        // Add 16x16 hollow stone box at x=78, z=62 (just walls, no top/bottom)
+        const boxCenterX = 78;
+        const boxCenterZ = 62;
+        const boxSize = 16;
+        const boxHeight = 4;
+        const groundHeight = terrainData[`${boxCenterX},${boxCenterZ}`];
+        
+        // Create the 4 walls of the box with doorway
+        for (let x = boxCenterX - boxSize/2; x < boxCenterX + boxSize/2; x++) {
+            for (let z = boxCenterZ - boxSize/2; z < boxCenterZ + boxSize/2; z++) {
+                // Only place blocks on the perimeter (walls)
+                const isWall = x === boxCenterX - boxSize/2 || x === boxCenterX + boxSize/2 - 1 || 
+                              z === boxCenterZ - boxSize/2 || z === boxCenterZ + boxSize/2 - 1;
+                
+                // Create doorway in the north wall (z = boxCenterZ - boxSize/2)
+                const isDoorway = z === boxCenterZ - boxSize/2 && 
+                                 x >= boxCenterX - 1 && x <= boxCenterX + 1;
+                
+                if (isWall && !isDoorway) {
+                    for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
+                        cobblestoneCount++;
+                        this.world.set(`${x},${y},${z}`, true);
+                    }
+                }
+            }
+        }
+
         // Create instanced meshes
         const grassInstanced = new THREE.InstancedMesh(geometry, grassMaterial, grassCount);
         const dirtInstanced = new THREE.InstancedMesh(geometry, dirtMaterial, dirtCount);
         const stoneInstanced = new THREE.InstancedMesh(geometry, stoneMaterial, stoneCount);
+        const cobblestoneInstanced = cobblestoneCount > 0 ? new THREE.InstancedMesh(geometry, cobblestoneMaterial, cobblestoneCount) : null;
         const waterInstanced =
             waterCount > 0 ? new THREE.InstancedMesh(geometry, waterMaterial, waterCount) : null;
 
@@ -205,6 +235,11 @@ class VoxelGame {
         dirtInstanced.receiveShadow = true;
         stoneInstanced.castShadow = true;
         stoneInstanced.receiveShadow = true;
+
+        if (cobblestoneInstanced) {
+            cobblestoneInstanced.castShadow = true;
+            cobblestoneInstanced.receiveShadow = true;
+        }
 
         if (waterInstanced) {
             waterInstanced.castShadow = false;
@@ -216,6 +251,7 @@ class VoxelGame {
         let grassIndex = 0,
             dirtIndex = 0,
             stoneIndex = 0,
+            cobblestoneIndex = 0,
             waterIndex = 0;
 
         for (let x = 0; x < this.worldSize; x += 1) {
@@ -245,9 +281,42 @@ class VoxelGame {
             }
         }
 
+        // Place cobblestone box walls
+        if (cobblestoneInstanced) {
+            const boxCenterX = 78;
+            const boxCenterZ = 62;
+            const boxSize = 16;
+            const boxHeight = 4;
+            const groundHeight = terrainData[`${boxCenterX},${boxCenterZ}`];
+            
+            // Create the 4 walls of the box with doorway
+            for (let x = boxCenterX - boxSize/2; x < boxCenterX + boxSize/2; x++) {
+                for (let z = boxCenterZ - boxSize/2; z < boxCenterZ + boxSize/2; z++) {
+                    // Only place blocks on the perimeter (walls)
+                    const isWall = x === boxCenterX - boxSize/2 || x === boxCenterX + boxSize/2 - 1 || 
+                                  z === boxCenterZ - boxSize/2 || z === boxCenterZ + boxSize/2 - 1;
+                    
+                    // Create doorway in the north wall (z = boxCenterZ - boxSize/2)
+                    const isDoorway = z === boxCenterZ - boxSize/2 && 
+                                     x >= boxCenterX - 1 && x <= boxCenterX + 1;
+                    
+                    if (isWall && !isDoorway) {
+                        for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
+                            matrix.setPosition(x, y, z);
+                            cobblestoneInstanced.setMatrixAt(cobblestoneIndex++, matrix);
+                        }
+                    }
+                }
+            }
+        }
+
         grassInstanced.instanceMatrix.needsUpdate = true;
         dirtInstanced.instanceMatrix.needsUpdate = true;
         stoneInstanced.instanceMatrix.needsUpdate = true;
+
+        if (cobblestoneInstanced) {
+            cobblestoneInstanced.instanceMatrix.needsUpdate = true;
+        }
 
         if (waterInstanced) {
             waterInstanced.instanceMatrix.needsUpdate = true;
@@ -256,6 +325,10 @@ class VoxelGame {
         this.scene.add(grassInstanced);
         this.scene.add(dirtInstanced);
         this.scene.add(stoneInstanced);
+
+        if (cobblestoneInstanced) {
+            this.scene.add(cobblestoneInstanced);
+        }
 
         if (waterInstanced) {
             this.scene.add(waterInstanced);
