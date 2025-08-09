@@ -7,6 +7,15 @@ export class Terrain {
         this.waterLevel = waterLevel;
         this.world = world;
         this.scene = scene;
+        
+        // Culling properties
+        this.renderDistance = 60; // Maximum render distance
+        this.minRenderDistance = 2; // Minimum distance - don't cull blocks within this range
+        this.instancedMeshes = {}; // Store instanced meshes for culling updates
+        this.blockData = {}; // Store block positions and types for culling
+        this.lastPlayerPosition = new THREE.Vector3();
+        this.lastPlayerRotation = 0;
+        this.cullingUpdateThreshold = 2; // Distance player must move before updating culling
     }
 
     generateWorld() {
@@ -48,6 +57,15 @@ export class Terrain {
             side: THREE.DoubleSide,
         });
 
+        // Initialize block data storage
+        this.blockData = {
+            grass: [],
+            dirt: [],
+            stone: [],
+            cobblestone: [],
+            water: []
+        };
+
         // Count blocks for each material
         let grassCount = 0,
             dirtCount = 0,
@@ -59,17 +77,26 @@ export class Terrain {
             for (let z = 0; z < this.worldSize; z += 1) {
                 const height = terrainData[`${x},${z}`];
 
-                // Count terrain blocks
+                // Count and store terrain blocks
                 for (let y = 0; y <= height; y++) {
-                    if (y === height) grassCount++;
-                    else if (y > height - 3) dirtCount++;
-                    else stoneCount++;
+                    const position = { x, y, z };
+                    if (y === height) {
+                        grassCount++;
+                        this.blockData.grass.push(position);
+                    } else if (y > height - 3) {
+                        dirtCount++;
+                        this.blockData.dirt.push(position);
+                    } else {
+                        stoneCount++;
+                        this.blockData.stone.push(position);
+                    }
                 }
 
-                // Count water blocks (fill areas below water level that are above terrain)
+                // Count and store water blocks (fill areas below water level that are above terrain)
                 if (height < this.waterLevel) {
                     for (let y = height + 1; y <= this.waterLevel; y++) {
                         waterCount++;
+                        this.blockData.water.push({ x, y, z });
                     }
                 }
             }
@@ -99,6 +126,7 @@ export class Terrain {
                 if (isWall && !isDoorway) {
                     for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
                         cobblestoneCount++;
+                        this.blockData.cobblestone.push({ x, y, z });
                         this.world.set(`${x},${y},${z}`, true);
                     }
                 }
@@ -115,6 +143,15 @@ export class Terrain {
                 : null;
         const waterInstanced =
             waterCount > 0 ? new THREE.InstancedMesh(geometry, waterMaterial, waterCount) : null;
+
+        // Store instanced meshes for culling
+        this.instancedMeshes = {
+            grass: grassInstanced,
+            dirt: dirtInstanced,
+            stone: stoneInstanced,
+            cobblestone: cobblestoneInstanced,
+            water: waterInstanced
+        };
 
         grassInstanced.castShadow = true;
         grassInstanced.receiveShadow = true;
@@ -239,5 +276,83 @@ export class Terrain {
             }
         }
         return 0; // Default ground level
+    }
+
+    updateCulling(playerPosition, playerYaw) {
+        // Check if player moved enough to warrant a culling update
+        const distanceMoved = playerPosition.distanceTo(this.lastPlayerPosition);
+        const rotationChanged = Math.abs(playerYaw - this.lastPlayerRotation) > 0.1;
+        
+        if (distanceMoved < this.cullingUpdateThreshold && !rotationChanged) {
+            return;
+        }
+
+        this.lastPlayerPosition.copy(playerPosition);
+        this.lastPlayerRotation = playerYaw;
+
+        // Update each block type
+        Object.keys(this.blockData).forEach(blockType => {
+            if (!this.instancedMeshes[blockType] || this.blockData[blockType].length === 0) return;
+            
+            this.updateBlockTypeCulling(blockType, playerPosition, playerYaw);
+        });
+    }
+
+    updateBlockTypeCulling(blockType, playerPosition, playerYaw) {
+        const mesh = this.instancedMeshes[blockType];
+        const blocks = this.blockData[blockType];
+        const matrix = new THREE.Matrix4();
+        const dummyMatrix = new THREE.Matrix4().makeScale(0, 0, 0); // Hidden block matrix
+        
+        // Calculate player forward direction (180-degree view)
+        const playerForward = new THREE.Vector3(
+            -Math.sin(playerYaw),
+            0,
+            -Math.cos(playerYaw)
+        );
+
+        let visibleIndex = 0;
+        
+        blocks.forEach((block, index) => {
+            const blockPosition = new THREE.Vector3(block.x, block.y, block.z);
+            const distanceToPlayer = blockPosition.distanceTo(playerPosition);
+            
+            // Distance culling
+            if (distanceToPlayer > this.renderDistance) {
+                mesh.setMatrixAt(index, dummyMatrix);
+                return;
+            }
+
+            // Don't cull blocks within minimum distance (prevents issues when looking up/down)
+            if (distanceToPlayer <= this.minRenderDistance) {
+                matrix.setPosition(block.x, block.y, block.z);
+                mesh.setMatrixAt(index, matrix);
+                return;
+            }
+
+            // Frustum culling (180-degree view)
+            const toBlock = blockPosition.clone().sub(playerPosition).normalize();
+            const dotProduct = toBlock.dot(playerForward);
+            
+            // For 180-degree view, show blocks in front and to sides (dot product > -0.2)
+            // Hide blocks behind player (dot product <= -0.2)
+            const isInView = dotProduct > -0.2;
+            
+            if (isInView) {
+                // Block is in view (front/sides), render it
+                matrix.setPosition(block.x, block.y, block.z);
+                mesh.setMatrixAt(index, matrix);
+            } else {
+                // Block is behind player, hide it
+                mesh.setMatrixAt(index, dummyMatrix);
+            }
+        });
+
+        mesh.instanceMatrix.needsUpdate = true;
+    }
+
+    // Method to be called from main game loop
+    performCulling(playerPosition, playerYaw) {
+        this.updateCulling(playerPosition, playerYaw);
     }
 }

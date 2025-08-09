@@ -1028,6 +1028,9 @@ class VoxelGame {
         const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
         this.updateHeldItemAnimation(deltaTime, isWalking);
 
+        // Perform block culling for performance
+        this.terrain.performCulling(this.player.position, this.yaw);
+
         this.renderer.render(this.scene, this.camera);
     }
 }
