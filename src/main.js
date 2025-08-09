@@ -311,6 +311,7 @@ class VoxelGame {
             wireframe: true,
             transparent: true,
             opacity: 0.8,
+            depthTest: false,
         });
         this.highlightBox = new THREE.Mesh(highlightGeometry, highlightMaterial);
         this.highlightBox.visible = false;
