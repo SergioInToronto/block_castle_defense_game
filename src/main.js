@@ -200,18 +200,21 @@ class VoxelGame {
         const boxSize = 16;
         const boxHeight = 4;
         const groundHeight = terrainData[`${boxCenterX},${boxCenterZ}`];
-        
+
         // Create the 4 walls of the box with doorway
-        for (let x = boxCenterX - boxSize/2; x < boxCenterX + boxSize/2; x++) {
-            for (let z = boxCenterZ - boxSize/2; z < boxCenterZ + boxSize/2; z++) {
+        for (let x = boxCenterX - boxSize / 2; x < boxCenterX + boxSize / 2; x++) {
+            for (let z = boxCenterZ - boxSize / 2; z < boxCenterZ + boxSize / 2; z++) {
                 // Only place blocks on the perimeter (walls)
-                const isWall = x === boxCenterX - boxSize/2 || x === boxCenterX + boxSize/2 - 1 || 
-                              z === boxCenterZ - boxSize/2 || z === boxCenterZ + boxSize/2 - 1;
-                
+                const isWall =
+                    x === boxCenterX - boxSize / 2 ||
+                    x === boxCenterX + boxSize / 2 - 1 ||
+                    z === boxCenterZ - boxSize / 2 ||
+                    z === boxCenterZ + boxSize / 2 - 1;
+
                 // Create doorway in the north wall (z = boxCenterZ - boxSize/2)
-                const isDoorway = z === boxCenterZ - boxSize/2 && 
-                                 x >= boxCenterX - 1 && x <= boxCenterX + 1;
-                
+                const isDoorway =
+                    z === boxCenterZ - boxSize / 2 && x >= boxCenterX - 1 && x <= boxCenterX + 1;
+
                 if (isWall && !isDoorway) {
                     for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
                         cobblestoneCount++;
@@ -225,7 +228,10 @@ class VoxelGame {
         const grassInstanced = new THREE.InstancedMesh(geometry, grassMaterial, grassCount);
         const dirtInstanced = new THREE.InstancedMesh(geometry, dirtMaterial, dirtCount);
         const stoneInstanced = new THREE.InstancedMesh(geometry, stoneMaterial, stoneCount);
-        const cobblestoneInstanced = cobblestoneCount > 0 ? new THREE.InstancedMesh(geometry, cobblestoneMaterial, cobblestoneCount) : null;
+        const cobblestoneInstanced =
+            cobblestoneCount > 0
+                ? new THREE.InstancedMesh(geometry, cobblestoneMaterial, cobblestoneCount)
+                : null;
         const waterInstanced =
             waterCount > 0 ? new THREE.InstancedMesh(geometry, waterMaterial, waterCount) : null;
 
@@ -288,18 +294,23 @@ class VoxelGame {
             const boxSize = 16;
             const boxHeight = 4;
             const groundHeight = terrainData[`${boxCenterX},${boxCenterZ}`];
-            
+
             // Create the 4 walls of the box with doorway
-            for (let x = boxCenterX - boxSize/2; x < boxCenterX + boxSize/2; x++) {
-                for (let z = boxCenterZ - boxSize/2; z < boxCenterZ + boxSize/2; z++) {
+            for (let x = boxCenterX - boxSize / 2; x < boxCenterX + boxSize / 2; x++) {
+                for (let z = boxCenterZ - boxSize / 2; z < boxCenterZ + boxSize / 2; z++) {
                     // Only place blocks on the perimeter (walls)
-                    const isWall = x === boxCenterX - boxSize/2 || x === boxCenterX + boxSize/2 - 1 || 
-                                  z === boxCenterZ - boxSize/2 || z === boxCenterZ + boxSize/2 - 1;
-                    
+                    const isWall =
+                        x === boxCenterX - boxSize / 2 ||
+                        x === boxCenterX + boxSize / 2 - 1 ||
+                        z === boxCenterZ - boxSize / 2 ||
+                        z === boxCenterZ + boxSize / 2 - 1;
+
                     // Create doorway in the north wall (z = boxCenterZ - boxSize/2)
-                    const isDoorway = z === boxCenterZ - boxSize/2 && 
-                                     x >= boxCenterX - 1 && x <= boxCenterX + 1;
-                    
+                    const isDoorway =
+                        z === boxCenterZ - boxSize / 2 &&
+                        x >= boxCenterX - 1 &&
+                        x <= boxCenterX + 1;
+
                     if (isWall && !isDoorway) {
                         for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
                             matrix.setPosition(x, y, z);
@@ -496,7 +507,7 @@ class VoxelGame {
             { x: 0.3, z: -0.5 }, // Back right
         ];
 
-        legPositions.forEach((pos, index) => {
+        legPositions.forEach((pos) => {
             const leg = new THREE.Mesh(legGeometry, pigBodyMaterial);
             leg.position.set(pos.x, 0.2, pos.z);
             leg.castShadow = true;
@@ -523,14 +534,14 @@ class VoxelGame {
         const powerUpGroup = new THREE.Group();
 
         // Materials
-        const coreMaterial = new THREE.MeshLambertMaterial({ 
+        const coreMaterial = new THREE.MeshLambertMaterial({
             color: 0xffd700, // Gold color
-            emissive: 0x332200 // Slight glow
+            emissive: 0x332200, // Slight glow
         });
-        const orbMaterial = new THREE.MeshLambertMaterial({ 
+        const orbMaterial = new THREE.MeshLambertMaterial({
             color: 0x00ffff, // Cyan color
             transparent: true,
-            opacity: 0.8
+            opacity: 0.8,
         });
 
         // Core cube (rotating inner part)
@@ -574,10 +585,10 @@ class VoxelGame {
             // Make sure it's above water level and not too close to player
             if (groundY > this.waterLevel + 1) {
                 const distToPlayer = Math.sqrt(
-                    Math.pow(x - this.player.position.x, 2) + 
-                    Math.pow(z - this.player.position.z, 2)
+                    Math.pow(x - this.player.position.x, 2) +
+                        Math.pow(z - this.player.position.z, 2)
                 );
-                
+
                 if (distToPlayer > 20) {
                     this.powerUp.position.set(x, groundY + 1, z);
                     validPosition = true;
@@ -593,6 +604,14 @@ class VoxelGame {
     }
 
     updateBlockHighlight() {
+        // Disable block highlighting when player is completely underwater
+        const playerHeadY = this.player.position.y + 1.6; // Eye level
+        if (playerHeadY <= this.waterLevel) {
+            this.highlightBox.visible = false;
+            this.targetedBlock = null;
+            return;
+        }
+
         // Set up raycaster from camera center with limited range
         const direction = new THREE.Vector3(0, 0, -1);
         direction.applyQuaternion(this.camera.quaternion);
@@ -731,7 +750,8 @@ class VoxelGame {
         this.powerUp.mesh.rotation.y += this.powerUp.rotationSpeed * deltaTime;
 
         // Bob up and down
-        const bobOffset = Math.sin(this.powerUp.animationTimer * this.powerUp.bobSpeed) * this.powerUp.bobHeight;
+        const bobOffset =
+            Math.sin(this.powerUp.animationTimer * this.powerUp.bobSpeed) * this.powerUp.bobHeight;
         this.powerUp.mesh.position.y = this.powerUp.baseY + bobOffset;
 
         // Rotate the core cube faster
@@ -743,7 +763,7 @@ class VoxelGame {
         // Animate the floating orbs
         for (let i = 1; i < this.powerUp.mesh.children.length; i++) {
             const orb = this.powerUp.mesh.children[i];
-            const orbTime = this.powerUp.animationTimer + (i * Math.PI / 2);
+            const orbTime = this.powerUp.animationTimer + (i * Math.PI) / 2;
             orb.position.y = Math.sin(orbTime * 2) * 0.2;
         }
 
@@ -756,7 +776,7 @@ class VoxelGame {
 
         // Calculate distance between player and power-up
         const distance = this.player.position.distanceTo(this.powerUp.mesh.position);
-        
+
         // If close enough, collect the power-up
         if (distance < 2.0) {
             this.collectPowerUp();
