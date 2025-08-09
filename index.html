@@ -68,6 +68,50 @@
             height: 100%;
             transform: translateX(-50%);
         }
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            z-index: 100;
+        }
+        .hotbar-slot {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #555;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .hotbar-slot.selected {
+            border-color: #fff;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+        .hotbar-slot .item-icon {
+            width: 32px;
+            height: 32px;
+            background-size: cover;
+            background-position: center;
+        }
+        .hotbar-slot .item-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+        .dirt-block {
+            background-color: #8b4513;
+            border: 1px solid #654321;
+        }
     </style>
 </head>
 <body>
@@ -82,6 +126,17 @@
             <div>Z: <span id="coord-z">0</span></div>
         </div>
         <div id="crosshair"></div>
+        <div id="hotbar">
+            <div class="hotbar-slot selected" data-slot="0">
+                <div class="item-icon dirt-block"></div>
+                <div class="item-count">25</div>
+            </div>
+            <div class="hotbar-slot" data-slot="1"></div>
+            <div class="hotbar-slot" data-slot="2"></div>
+            <div class="hotbar-slot" data-slot="3"></div>
+            <div class="hotbar-slot" data-slot="4"></div>
+            <div class="hotbar-slot" data-slot="5"></div>
+        </div>
     </div>
     <script type="module" src="/src/main.js"></script>
 </body>

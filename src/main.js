@@ -66,6 +66,22 @@ class VoxelGame {
             bobHeight: 0.5,
         };
 
+        // Inventory system
+        this.inventory = {
+            hotbar: new Array(6).fill(null),
+            selectedSlot: 0,
+        };
+
+        // Item types
+        this.itemTypes = {
+            dirt: {
+                id: 'dirt',
+                name: 'Dirt Block',
+                maxStack: 64,
+                color: 0x8b4513,
+            },
+        };
+
         this.init();
     }
 
@@ -102,6 +118,9 @@ class VoxelGame {
         // Create power-up
         this.createPowerUp();
 
+        // Initialize inventory
+        this.initializeInventory();
+
         // Start game loop
         this.animate();
 
@@ -126,6 +145,117 @@ class VoxelGame {
         directionalLight.shadow.camera.top = 300;
         directionalLight.shadow.camera.bottom = -300;
         this.scene.add(directionalLight);
+    }
+
+    initializeInventory() {
+        // Add 25 dirt blocks to the first hotbar slot
+        this.inventory.hotbar[0] = {
+            type: 'dirt',
+            count: 25,
+        };
+        this.updateHotbarDisplay();
+    }
+
+    updateHotbarDisplay() {
+        for (let i = 0; i < 6; i++) {
+            const slotElement = document.querySelector(`[data-slot="${i}"]`);
+            const iconElement = slotElement.querySelector('.item-icon');
+            const countElement = slotElement.querySelector('.item-count');
+
+            // Clear slot
+            if (iconElement) iconElement.remove();
+            if (countElement) countElement.remove();
+
+            const item = this.inventory.hotbar[i];
+            if (item && item.count > 0) {
+                // Add item icon
+                const newIcon = document.createElement('div');
+                newIcon.className = 'item-icon';
+                if (item.type === 'dirt') {
+                    newIcon.classList.add('dirt-block');
+                }
+                slotElement.appendChild(newIcon);
+
+                // Add item count
+                const newCount = document.createElement('div');
+                newCount.className = 'item-count';
+                newCount.textContent = item.count.toString();
+                slotElement.appendChild(newCount);
+            }
+
+            // Update selection
+            if (i === this.inventory.selectedSlot) {
+                slotElement.classList.add('selected');
+            } else {
+                slotElement.classList.remove('selected');
+            }
+        }
+    }
+
+    addItemToInventory(itemType, count = 1) {
+        const itemData = this.itemTypes[itemType];
+        if (!itemData) return false;
+
+        // Try to add to existing stacks first
+        for (let i = 0; i < this.inventory.hotbar.length; i++) {
+            const slot = this.inventory.hotbar[i];
+            if (slot && slot.type === itemType && slot.count < itemData.maxStack) {
+                const addAmount = Math.min(count, itemData.maxStack - slot.count);
+                slot.count += addAmount;
+                count -= addAmount;
+                if (count <= 0) break;
+            }
+        }
+
+        // Add to empty slots if we still have items
+        if (count > 0) {
+            for (let i = 0; i < this.inventory.hotbar.length; i++) {
+                if (!this.inventory.hotbar[i]) {
+                    const addAmount = Math.min(count, itemData.maxStack);
+                    this.inventory.hotbar[i] = {
+                        type: itemType,
+                        count: addAmount,
+                    };
+                    count -= addAmount;
+                    if (count <= 0) break;
+                }
+            }
+        }
+
+        this.updateHotbarDisplay();
+        return count === 0; // Return true if all items were added
+    }
+
+    removeItemFromInventory(itemType, count = 1) {
+        let remaining = count;
+
+        // Remove from existing stacks
+        for (let i = 0; i < this.inventory.hotbar.length; i++) {
+            const slot = this.inventory.hotbar[i];
+            if (slot && slot.type === itemType && remaining > 0) {
+                const removeAmount = Math.min(remaining, slot.count);
+                slot.count -= removeAmount;
+                remaining -= removeAmount;
+
+                if (slot.count <= 0) {
+                    this.inventory.hotbar[i] = null;
+                }
+            }
+        }
+
+        this.updateHotbarDisplay();
+        return count - remaining; // Return how many items were actually removed
+    }
+
+    getSelectedItem() {
+        return this.inventory.hotbar[this.inventory.selectedSlot];
+    }
+
+    selectHotbarSlot(slotIndex) {
+        if (slotIndex >= 0 && slotIndex < 6) {
+            this.inventory.selectedSlot = slotIndex;
+            this.updateHotbarDisplay();
+        }
     }
 
     generateWorld() {
@@ -416,6 +546,12 @@ class VoxelGame {
         // Keyboard controls
         document.addEventListener('keydown', event => {
             this.keys[event.code] = true;
+
+            // Hotbar controls (number keys 1-6)
+            if (event.code >= 'Digit1' && event.code <= 'Digit6') {
+                const slotIndex = parseInt(event.code.charAt(5)) - 1; // Extract digit and convert to 0-based index
+                this.selectHotbarSlot(slotIndex);
+            }
         });
 
         document.addEventListener('keyup', event => {
