@@ -8,13 +8,13 @@ class VoxelGame {
             75,
             window.innerWidth / window.innerHeight,
             0.1,
-            100
+            1000
         );
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.clock = new THREE.Clock();
 
         // World settings
-        this.worldSize = 300; // 300x300 blocks
+        this.worldSize = 180; // 180x180 blocks
         this.blockSize = 1;
         this.world = new Map();
         this.waterLevel = 7; // Water appears at y=8 and below
@@ -47,6 +47,7 @@ class VoxelGame {
             scene: null,
             camera: null,
             renderer: null,
+            directionalLight: null,
             animationTimer: 0,
             baseRotation: { x: 0, y: 0, z: 0 },
             bobOffset: 0,
@@ -306,14 +307,14 @@ class VoxelGame {
         const container = document.getElementById('held-item-container');
         container.appendChild(this.heldItem.renderer.domElement);
 
-        // Add lighting to the held item scene
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        // Add lighting to the held item scene (matching world lighting)
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         this.heldItem.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        directionalLight.position.set(2, 2, 2);
-        directionalLight.castShadow = true;
-        this.heldItem.scene.add(directionalLight);
+        this.heldItem.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.heldItem.directionalLight.position.set(200, 300, 200).normalize().multiplyScalar(5);
+        this.heldItem.directionalLight.castShadow = true;
+        this.heldItem.scene.add(this.heldItem.directionalLight);
 
         // Initialize with current selected item
         this.updateHeldItemDisplay();
@@ -382,6 +383,18 @@ class VoxelGame {
             this.heldItem.mesh.position.y = -0.2 + Math.sin(this.heldItem.animationTimer * idleSpeed) * idleAmount;
             this.heldItem.mesh.rotation.z = this.heldItem.baseRotation.z +
                 Math.sin(this.heldItem.animationTimer * idleSpeed * 0.8) * idleAmount;
+        }
+
+        // Update light direction to match world lighting relative to camera rotation
+        if (this.heldItem.directionalLight) {
+            // World light direction: normalized (200, 300, 200)
+            const worldLightDirection = new THREE.Vector3(200, 300, 200).normalize();
+            
+            // Apply inverse camera rotation to keep light direction consistent with world
+            const lightDirection = worldLightDirection.clone();
+            lightDirection.applyEuler(new THREE.Euler(-this.pitch, -this.yaw, 0));
+            
+            this.heldItem.directionalLight.position.copy(lightDirection.multiplyScalar(5));
         }
 
         // Render the held item
