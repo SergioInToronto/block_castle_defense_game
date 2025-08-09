@@ -300,10 +300,11 @@ class VoxelGame {
     }
 
     updateBlockHighlight() {
-        // Set up raycaster from camera center
+        // Set up raycaster from camera center with limited range
         const direction = new THREE.Vector3(0, 0, -1);
         direction.applyQuaternion(this.camera.quaternion);
         this.raycaster.set(this.camera.position, direction);
+        this.raycaster.far = 10; // Limit to 10 blocks distance
 
         // Find all objects to test against (grass, dirt, stone meshes)
         const testObjects = [];
