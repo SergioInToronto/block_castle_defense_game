@@ -149,6 +149,7 @@ class VoxelGame {
             color: 0x4da6ff,
             transparent: true,
             opacity: 0.7,
+            side: THREE.DoubleSide,
         });
 
         // Count blocks for each material
