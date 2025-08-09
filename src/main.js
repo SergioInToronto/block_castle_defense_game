@@ -13,15 +13,15 @@ class VoxelGame {
         this.clock = new THREE.Clock();
 
         // World settings
-        this.worldSize = 200;
+        this.worldSize = 300; // 300x300 blocks
         this.blockSize = 1;
         this.world = new Map();
         this.waterLevel = 7; // Water appears at y=8 and below
 
         // Player settings
-        this.spawnPosition = new THREE.Vector3(100, 20, 100);
+        this.spawnPosition = new THREE.Vector3(250, 20, 250);
         this.player = {
-            position: new THREE.Vector3(100, 20, 100),
+            position: new THREE.Vector3(250, 20, 250),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 10,
             jumpPower: 10,
@@ -54,7 +54,7 @@ class VoxelGame {
         // Pig settings
         this.pig = {
             mesh: null,
-            position: new THREE.Vector3(110, 20, 110),
+            position: new THREE.Vector3(260, 20, 260),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 2,
             jumpPower: 8,
@@ -855,7 +855,7 @@ class VoxelGame {
 
         // Fallback position if no valid position found
         if (!validPosition) {
-            this.powerUp.position.set(150, 15, 150);
+            this.powerUp.position.set(400, 15, 400);
         }
     }
 
