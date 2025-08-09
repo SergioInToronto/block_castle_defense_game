@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TerrainGenerator } from './terrain.js';
+import { Terrain } from './terrain.js';
 
 class VoxelGame {
     constructor() {
@@ -8,7 +8,7 @@ class VoxelGame {
             75,
             window.innerWidth / window.innerHeight,
             0.1,
-            150
+            100
         );
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.clock = new THREE.Clock();
@@ -22,7 +22,7 @@ class VoxelGame {
         // Player settings
         this.spawnPosition = new THREE.Vector3(250, 20, 250);
         this.player = {
-            position: new THREE.Vector3(250, 20, 250),
+            position: new THREE.Vector3(150, 20, 150),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 10,
             jumpPower: 10,
@@ -55,7 +55,7 @@ class VoxelGame {
         // Pig settings
         this.pig = {
             mesh: null,
-            position: new THREE.Vector3(260, 20, 260),
+            position: new THREE.Vector3(140, 20, 140),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 2,
             jumpPower: 8,
@@ -112,8 +112,8 @@ class VoxelGame {
         // Add lighting
         this.setupLighting();
 
-        // Create terrain generator
-        this.terrainGenerator = new TerrainGenerator(
+        // Access terrain-related functionality
+        this.terrain = new Terrain(
             this.worldSize,
             this.blockSize,
             this.waterLevel,
@@ -122,7 +122,7 @@ class VoxelGame {
         );
 
         // Generate world
-        this.terrainGenerator.generateWorld();
+        this.terrain.generateWorld();
 
         // Create player
         this.createPlayer();
@@ -630,7 +630,7 @@ class VoxelGame {
         while (!validPosition && attempts < 50) {
             const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
             const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-            const groundY = this.terrainGenerator.getGroundHeight(x, z);
+            const groundY = this.terrain.getGroundHeight(x, z);
 
             // Make sure it's above water level and not too close to player
             if (groundY > this.waterLevel + 1) {
@@ -749,7 +749,7 @@ class VoxelGame {
         this.pig.position.y += this.pig.velocity.y * deltaTime;
 
         // Ground collision (simple)
-        const groundY = this.terrainGenerator.getGroundHeight(this.pig.position.x, this.pig.position.z);
+        const groundY = this.terrain.getGroundHeight(this.pig.position.x, this.pig.position.z);
         if (this.pig.position.y <= groundY) {
             this.pig.position.y = groundY;
             this.pig.velocity.y = 0;
@@ -929,7 +929,7 @@ class VoxelGame {
         // Check if landing on ground
         if (velocity.y <= 0) {
             // Falling or on ground
-            const groundY = this.terrainGenerator.getGroundHeight(this.player.position.x, this.player.position.z);
+            const groundY = this.terrain.getGroundHeight(this.player.position.x, this.player.position.z);
             if (newY <= groundY + 0.1) {
                 // Small epsilon for ground detection
                 this.player.position.y = groundY;

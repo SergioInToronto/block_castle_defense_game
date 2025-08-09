@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export class TerrainGenerator {
+export class Terrain {
     constructor(worldSize, blockSize, waterLevel, world, scene) {
         this.worldSize = worldSize;
         this.blockSize = blockSize;
