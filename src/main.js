@@ -39,6 +39,21 @@ class VoxelGame {
         this.highlightBox = null;
         this.targetedBlock = null;
 
+        // Pig settings
+        this.pig = {
+            mesh: null,
+            position: new THREE.Vector3(110, 20, 110),
+            velocity: new THREE.Vector3(0, 0, 0),
+            speed: 2,
+            jumpPower: 8,
+            onGround: true,
+            direction: Math.random() * Math.PI * 2,
+            walkTimer: 0,
+            jumpTimer: 0,
+            animationTimer: 0,
+            legs: [],
+        };
+
         this.init();
     }
 
@@ -68,6 +83,9 @@ class VoxelGame {
 
         // Create block highlight
         this.createHighlightBox();
+
+        // Create pig
+        this.createPig();
 
         // Start game loop
         this.animate();
@@ -299,6 +317,77 @@ class VoxelGame {
         this.scene.add(this.highlightBox);
     }
 
+    createPig() {
+        // Create pig group
+        const pigGroup = new THREE.Group();
+
+        // Materials
+        const pigBodyMaterial = new THREE.MeshLambertMaterial({ color: 0xffb6c1 }); // Light pink
+        const pigSnoutMaterial = new THREE.MeshLambertMaterial({ color: 0xff91a4 }); // Darker pink
+        const pigEyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 }); // Black
+
+        // Body (main torso)
+        const bodyGeometry = new THREE.BoxGeometry(1.0, 0.6, 1.4);
+        const body = new THREE.Mesh(bodyGeometry, pigBodyMaterial);
+        body.position.y = 0.3;
+        body.castShadow = true;
+        pigGroup.add(body);
+
+        // Head
+        const headGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+        const head = new THREE.Mesh(headGeometry, pigBodyMaterial);
+        head.position.set(0, 0.3, 0.8);
+        head.castShadow = true;
+        pigGroup.add(head);
+
+        // Snout
+        const snoutGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.2);
+        const snout = new THREE.Mesh(snoutGeometry, pigSnoutMaterial);
+        snout.position.set(0, 0.2, 1.2);
+        snout.castShadow = true;
+        pigGroup.add(snout);
+
+        // Eyes
+        const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const leftEye = new THREE.Mesh(eyeGeometry, pigEyeMaterial);
+        leftEye.position.set(-0.15, 0.4, 1.0);
+        pigGroup.add(leftEye);
+
+        const rightEye = new THREE.Mesh(eyeGeometry, pigEyeMaterial);
+        rightEye.position.set(0.15, 0.4, 1.0);
+        pigGroup.add(rightEye);
+
+        // Legs (4 legs)
+        const legGeometry = new THREE.BoxGeometry(0.15, 0.4, 0.15);
+        const legPositions = [
+            { x: -0.3, z: 0.5 }, // Front left
+            { x: 0.3, z: 0.5 }, // Front right
+            { x: -0.3, z: -0.5 }, // Back left
+            { x: 0.3, z: -0.5 }, // Back right
+        ];
+
+        legPositions.forEach((pos, index) => {
+            const leg = new THREE.Mesh(legGeometry, pigBodyMaterial);
+            leg.position.set(pos.x, 0.2, pos.z);
+            leg.castShadow = true;
+            pigGroup.add(leg);
+            this.pig.legs.push(leg);
+        });
+
+        // Tail
+        const tailGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.3);
+        const tail = new THREE.Mesh(tailGeometry, pigBodyMaterial);
+        tail.position.set(0, 0.4, -0.8);
+        tail.rotation.x = Math.PI / 4;
+        tail.castShadow = true;
+        pigGroup.add(tail);
+
+        // Position pig in world
+        pigGroup.position.copy(this.pig.position);
+        this.scene.add(pigGroup);
+        this.pig.mesh = pigGroup;
+    }
+
     updateBlockHighlight() {
         // Set up raycaster from camera center with limited range
         const direction = new THREE.Vector3(0, 0, -1);
@@ -338,6 +427,83 @@ class VoxelGame {
             // No block targeted
             this.highlightBox.visible = false;
             this.targetedBlock = null;
+        }
+    }
+
+    updatePig(deltaTime) {
+        if (!this.pig.mesh) return;
+
+        // Update timers
+        this.pig.walkTimer += deltaTime;
+        this.pig.jumpTimer += deltaTime;
+        this.pig.animationTimer += deltaTime;
+
+        // Random direction changes
+        if (this.pig.walkTimer > 2 + Math.random() * 3) {
+            this.pig.direction = Math.random() * Math.PI * 2;
+            this.pig.walkTimer = 0;
+        }
+
+        // Random jumping
+        if (this.pig.jumpTimer > 3 + Math.random() * 4 && this.pig.onGround) {
+            this.pig.velocity.y = this.pig.jumpPower;
+            this.pig.onGround = false;
+            this.pig.jumpTimer = 0;
+        }
+
+        // Apply gravity
+        this.pig.velocity.y -= 25 * deltaTime;
+
+        // Movement
+        const moveDirection = new THREE.Vector3(
+            Math.sin(this.pig.direction) * this.pig.speed * deltaTime,
+            0,
+            Math.cos(this.pig.direction) * this.pig.speed * deltaTime
+        );
+
+        // Update position
+        this.pig.position.add(moveDirection);
+        this.pig.position.y += this.pig.velocity.y * deltaTime;
+
+        // Ground collision (simple)
+        const groundY = this.getGroundHeight(this.pig.position.x, this.pig.position.z);
+        if (this.pig.position.y <= groundY) {
+            this.pig.position.y = groundY;
+            this.pig.velocity.y = 0;
+            this.pig.onGround = true;
+        }
+
+        // Keep pig within world bounds
+        this.pig.position.x = Math.max(5, Math.min(this.worldSize - 5, this.pig.position.x));
+        this.pig.position.z = Math.max(5, Math.min(this.worldSize - 5, this.pig.position.z));
+
+        // Animate pig
+        this.animatePig();
+
+        // Update pig mesh position and rotation
+        if (this.pig.mesh) {
+            this.pig.mesh.position.copy(this.pig.position);
+            this.pig.mesh.rotation.y = this.pig.direction;
+        }
+    }
+
+    animatePig() {
+        if (!this.pig.legs.length) return;
+
+        // Walking animation - bob legs up and down
+        const walkSpeed = 8;
+        const legBobAmount = 0.1;
+
+        this.pig.legs.forEach((leg, index) => {
+            const offset = (index * Math.PI) / 2; // Phase offset for each leg
+            const bobOffset = Math.sin(this.pig.animationTimer * walkSpeed + offset) * legBobAmount;
+            leg.position.y = -0.1 + bobOffset;
+        });
+
+        // Body bob during walking
+        if (this.pig.mesh && this.pig.mesh.children.length > 0) {
+            const bodyBob = Math.sin(this.pig.animationTimer * walkSpeed * 2) * 0.02;
+            this.pig.mesh.children[0].position.y = 0.3 + bodyBob; // Body is first child
         }
     }
 
@@ -492,6 +658,7 @@ class VoxelGame {
 
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
+        this.updatePig(deltaTime);
         this.updateCamera();
         this.updateBlockHighlight();
 
