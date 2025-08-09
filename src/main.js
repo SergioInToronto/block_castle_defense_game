@@ -34,6 +34,11 @@ class VoxelGame {
         this.pitch = 0;
         this.yaw = 0;
 
+        // Block highlighting
+        this.raycaster = new THREE.Raycaster();
+        this.highlightBox = null;
+        this.targetedBlock = null;
+
         this.init();
     }
 
@@ -60,6 +65,9 @@ class VoxelGame {
 
         // Setup controls
         this.setupControls();
+
+        // Create block highlight
+        this.createHighlightBox();
 
         // Start game loop
         this.animate();
@@ -277,6 +285,61 @@ class VoxelGame {
         });
     }
 
+    createHighlightBox() {
+        // Create wireframe box for highlighting blocks
+        const highlightGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+        const highlightMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.8,
+        });
+        this.highlightBox = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        this.highlightBox.visible = false;
+        this.scene.add(this.highlightBox);
+    }
+
+    updateBlockHighlight() {
+        // Set up raycaster from camera center
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(this.camera.quaternion);
+        this.raycaster.set(this.camera.position, direction);
+
+        // Find all objects to test against (grass, dirt, stone meshes)
+        const testObjects = [];
+        this.scene.traverse(child => {
+            if (child instanceof THREE.InstancedMesh) {
+                testObjects.push(child);
+            }
+        });
+
+        // Perform raycast
+        const intersects = this.raycaster.intersectObjects(testObjects);
+
+        if (intersects.length > 0) {
+            const intersection = intersects[0];
+
+            // Get the world position of the intersected block
+            const instanceMatrix = new THREE.Matrix4();
+            intersection.object.getMatrixAt(intersection.instanceId, instanceMatrix);
+            const position = new THREE.Vector3();
+            position.setFromMatrixPosition(instanceMatrix);
+
+            // Position highlight box at the block
+            this.highlightBox.position.copy(position);
+            this.highlightBox.visible = true;
+            this.targetedBlock = {
+                position: position.clone(),
+                instanceId: intersection.instanceId,
+                object: intersection.object,
+            };
+        } else {
+            // No block targeted
+            this.highlightBox.visible = false;
+            this.targetedBlock = null;
+        }
+    }
+
     handleInput(deltaTime) {
         const direction = new THREE.Vector3();
 
@@ -429,6 +492,7 @@ class VoxelGame {
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
         this.updateCamera();
+        this.updateBlockHighlight();
 
         this.renderer.render(this.scene, this.camera);
     }
