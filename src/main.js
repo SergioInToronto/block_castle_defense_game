@@ -287,7 +287,7 @@ class VoxelGame {
             alpha: true,
             premultipliedAlpha: false
         });
-        this.heldItem.renderer.setSize(150, 150);
+        this.heldItem.renderer.setSize(400, 400);
         this.heldItem.renderer.setClearColor(0x000000, 0); // Transparent background
         this.heldItem.renderer.shadowMap.enabled = true;
         this.heldItem.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -326,7 +326,7 @@ class VoxelGame {
     }
 
     createHeldBlock() {
-        const geometry = new THREE.BoxGeometry(3.2, 3.2, 3.2);
+        const geometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
         const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
 
         this.heldItem.mesh = new THREE.Mesh(geometry, material);
