@@ -55,6 +55,17 @@ class VoxelGame {
             legs: [],
         };
 
+        // Power-up settings
+        this.powerUp = {
+            mesh: null,
+            position: new THREE.Vector3(0, 0, 0),
+            baseY: 0,
+            animationTimer: 0,
+            rotationSpeed: 2,
+            bobSpeed: 3,
+            bobHeight: 0.5,
+        };
+
         this.init();
     }
 
@@ -87,6 +98,9 @@ class VoxelGame {
 
         // Create pig
         this.createPig();
+
+        // Create power-up
+        this.createPowerUp();
 
         // Start game loop
         this.animate();
@@ -431,6 +445,80 @@ class VoxelGame {
         this.pig.mesh = pigGroup;
     }
 
+    createPowerUp() {
+        // Create power-up group
+        const powerUpGroup = new THREE.Group();
+
+        // Materials
+        const coreMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0xffd700, // Gold color
+            emissive: 0x332200 // Slight glow
+        });
+        const orbMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x00ffff, // Cyan color
+            transparent: true,
+            opacity: 0.8
+        });
+
+        // Core cube (rotating inner part)
+        const coreGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        core.castShadow = true;
+        powerUpGroup.add(core);
+
+        // Floating orbs around the core
+        const orbGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        for (let i = 0; i < 4; i++) {
+            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+            const angle = (i / 4) * Math.PI * 2;
+            orb.position.set(
+                Math.cos(angle) * 0.8,
+                Math.sin(angle * 2) * 0.2,
+                Math.sin(angle) * 0.8
+            );
+            powerUpGroup.add(orb);
+        }
+
+        // Find random spawn position on ground
+        this.findRandomSpawnPosition();
+        powerUpGroup.position.copy(this.powerUp.position);
+        this.powerUp.baseY = this.powerUp.position.y;
+
+        this.scene.add(powerUpGroup);
+        this.powerUp.mesh = powerUpGroup;
+    }
+
+    findRandomSpawnPosition() {
+        // Try to find a good spawn position (not in water, on solid ground)
+        let attempts = 0;
+        let validPosition = false;
+
+        while (!validPosition && attempts < 50) {
+            const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+            const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+            const groundY = this.getGroundHeight(x, z);
+
+            // Make sure it's above water level and not too close to player
+            if (groundY > this.waterLevel + 1) {
+                const distToPlayer = Math.sqrt(
+                    Math.pow(x - this.player.position.x, 2) + 
+                    Math.pow(z - this.player.position.z, 2)
+                );
+                
+                if (distToPlayer > 20) {
+                    this.powerUp.position.set(x, groundY + 1, z);
+                    validPosition = true;
+                }
+            }
+            attempts++;
+        }
+
+        // Fallback position if no valid position found
+        if (!validPosition) {
+            this.powerUp.position.set(150, 15, 150);
+        }
+    }
+
     updateBlockHighlight() {
         // Set up raycaster from camera center with limited range
         const direction = new THREE.Vector3(0, 0, -1);
@@ -558,6 +646,62 @@ class VoxelGame {
             const bodyBob = Math.sin(this.pig.animationTimer * walkSpeed * 2) * 0.02;
             this.pig.mesh.children[0].position.y = 0.3 + bodyBob; // Body is first child
         }
+    }
+
+    updatePowerUp(deltaTime) {
+        if (!this.powerUp.mesh) return;
+
+        // Update animation timer
+        this.powerUp.animationTimer += deltaTime;
+
+        // Rotate the entire power-up
+        this.powerUp.mesh.rotation.y += this.powerUp.rotationSpeed * deltaTime;
+
+        // Bob up and down
+        const bobOffset = Math.sin(this.powerUp.animationTimer * this.powerUp.bobSpeed) * this.powerUp.bobHeight;
+        this.powerUp.mesh.position.y = this.powerUp.baseY + bobOffset;
+
+        // Rotate the core cube faster
+        if (this.powerUp.mesh.children[0]) {
+            this.powerUp.mesh.children[0].rotation.x += deltaTime * 3;
+            this.powerUp.mesh.children[0].rotation.z += deltaTime * 2;
+        }
+
+        // Animate the floating orbs
+        for (let i = 1; i < this.powerUp.mesh.children.length; i++) {
+            const orb = this.powerUp.mesh.children[i];
+            const orbTime = this.powerUp.animationTimer + (i * Math.PI / 2);
+            orb.position.y = Math.sin(orbTime * 2) * 0.2;
+        }
+
+        // Check collision with player
+        this.checkPowerUpCollision();
+    }
+
+    checkPowerUpCollision() {
+        if (!this.powerUp.mesh) return;
+
+        // Calculate distance between player and power-up
+        const distance = this.player.position.distanceTo(this.powerUp.mesh.position);
+        
+        // If close enough, collect the power-up
+        if (distance < 2.0) {
+            this.collectPowerUp();
+        }
+    }
+
+    collectPowerUp() {
+        if (!this.powerUp.mesh) return;
+
+        // Remove power-up from scene
+        this.scene.remove(this.powerUp.mesh);
+        this.powerUp.mesh = null;
+
+        // Grant double jump ability
+        this.player.hasDoubleJump = true;
+        this.player.canDoubleJump = true;
+
+        console.log('Power-up collected! Double jump unlocked!');
     }
 
     handleInput(deltaTime) {
@@ -732,6 +876,7 @@ class VoxelGame {
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
         this.updatePig(deltaTime);
+        this.updatePowerUp(deltaTime);
         this.updateCamera();
         this.updateBlockHighlight();
         this.updateCoordinateDisplay();
