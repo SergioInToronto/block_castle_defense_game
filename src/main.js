@@ -16,6 +16,14 @@ class VoxelGame {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.clock = new THREE.Clock();
 
+        // FPS tracking
+        this.fps = {
+            frameCount: 0,
+            lastTime: performance.now(),
+            current: 0,
+            updateInterval: 1000, // Update every 1000ms (1 second)
+        };
+
         // World settings
         this.worldSize = 180; // 180x180 blocks
         this.blockSize = 1;
@@ -725,6 +733,20 @@ class VoxelGame {
         document.getElementById('coord-z').textContent = z.toString();
     }
 
+    updateFPS() {
+        this.fps.frameCount++;
+        const currentTime = performance.now();
+        const deltaTime = currentTime - this.fps.lastTime;
+
+        if (deltaTime >= this.fps.updateInterval) {
+            this.fps.current = Math.round((this.fps.frameCount * 1000) / deltaTime);
+            this.fps.frameCount = 0;
+            this.fps.lastTime = currentTime;
+
+            document.getElementById('fps-display').textContent = this.fps.current.toString();
+        }
+    }
+
     updatePig(deltaTime) {
         if (!this.pig.mesh) return;
 
@@ -1022,6 +1044,7 @@ class VoxelGame {
         this.updateCamera();
         this.updateBlockHighlight();
         this.updateCoordinateDisplay();
+        this.updateFPS();
 
         // Update held item animation
         const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
