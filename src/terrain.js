@@ -10,7 +10,7 @@ export class Terrain {
 
         // Culling properties
         this.renderDistance = render_distance; // Maximum render distance
-        this.minRenderDistance = 10; // Minimum distance - don't cull blocks within this range
+        this.minRenderDistance = 2; // Minimum distance - don't cull blocks within this range
         this.instancedMeshes = {}; // Store instanced meshes for culling updates
         this.blockData = {}; // Store block positions and types for culling
         this.lastPlayerPosition = new THREE.Vector3();
@@ -65,6 +65,10 @@ export class Terrain {
             cobblestone: [],
             water: []
         };
+
+        // Surface detection data
+        this.surfaceBlocks = new Set(); // Blocks that are exposed to air
+        this.undergroundBlocks = new Set(); // Blocks that are completely enclosed
 
         // Count blocks for each material
         let grassCount = 0,
@@ -262,6 +266,54 @@ export class Terrain {
         if (waterInstanced) {
             this.scene.add(waterInstanced);
         }
+
+        // After all blocks are placed, detect surface and underground blocks
+        this.detectSurfaceBlocks();
+    }
+
+    detectSurfaceBlocks() {
+        // Check each block to see if it has at least one face exposed to air
+        const directions = [
+            { x: 1, y: 0, z: 0 },   // Right
+            { x: -1, y: 0, z: 0 },  // Left
+            { x: 0, y: 1, z: 0 },   // Up
+            { x: 0, y: -1, z: 0 },  // Down
+            { x: 0, y: 0, z: 1 },   // Forward
+            { x: 0, y: 0, z: -1 }   // Back
+        ];
+
+        // Process all block types
+        Object.keys(this.blockData).forEach(blockType => {
+            this.blockData[blockType].forEach(block => {
+                const blockKey = `${block.x},${block.y},${block.z}`;
+                let hasExposedFace = false;
+
+                // Check all 6 directions around this block
+                for (const dir of directions) {
+                    const neighborX = block.x + dir.x;
+                    const neighborY = block.y + dir.y;
+                    const neighborZ = block.z + dir.z;
+                    const neighborKey = `${neighborX},${neighborY},${neighborZ}`;
+
+                    // If neighbor doesn't exist or is out of bounds, this face is exposed
+                    if (!this.world.has(neighborKey) ||
+                        neighborX < 0 || neighborX >= this.worldSize ||
+                        neighborZ < 0 || neighborZ >= this.worldSize ||
+                        neighborY < 0) {
+                        hasExposedFace = true;
+                        break;
+                    }
+                }
+
+                if (hasExposedFace) {
+                    this.surfaceBlocks.add(blockKey);
+                } else {
+                    this.undergroundBlocks.add(blockKey);
+                }
+            });
+        });
+
+        console.log(`Surface blocks: ${this.surfaceBlocks.size}, Underground blocks: ${this.undergroundBlocks.size}`);
     }
 
     getGroundHeight(x, z) {
@@ -316,6 +368,13 @@ export class Terrain {
         blocks.forEach((block, index) => {
             const blockPosition = new THREE.Vector3(block.x, block.y, block.z);
             const distanceToPlayer = blockPosition.distanceTo(playerPosition);
+            const blockKey = `${block.x},${block.y},${block.z}`;
+
+            // Underground block culling - hide completely enclosed blocks
+            if (this.undergroundBlocks.has(blockKey)) {
+                mesh.setMatrixAt(index, dummyMatrix);
+                return;
+            }
 
             // Distance culling
             if (distanceToPlayer > this.renderDistance) {
