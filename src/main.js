@@ -61,6 +61,9 @@ class VoxelGame {
         this.raycaster = new THREE.Raycaster();
         this.highlightBox = null;
         this.targetedBlock = null;
+        this.cachedInstancedMeshes = []; // Cache for performance
+        this.highlightUpdateTimer = 0;
+        this.highlightUpdateInterval = 0.05; // Update every 50ms (20 FPS)
 
         // Held item display
         this.heldItem = {
@@ -135,6 +138,9 @@ class VoxelGame {
         // Generate world
         this.terrain.generateWorld();
 
+        // Cache instanced meshes for block highlighting performance
+        this.cacheInstancedMeshes();
+
         // Create player
         this.createPlayer();
 
@@ -177,6 +183,25 @@ class VoxelGame {
         directionalLight.shadow.camera.top = 300;
         directionalLight.shadow.camera.bottom = -300;
         this.scene.add(directionalLight);
+    }
+
+    cacheInstancedMeshes() {
+        // Cache instanced meshes once to avoid scene traversal every frame
+        this.cachedInstancedMeshes = [];
+        this.scene.traverse(child => {
+            if (child instanceof THREE.InstancedMesh) {
+                this.cachedInstancedMeshes.push(child);
+            }
+        });
+        console.log(`Cached ${this.cachedInstancedMeshes.length} instanced meshes for block highlighting`);
+    }
+
+    getNearbyInstancedMeshes(position, maxDistance) {
+        // For now, return all cached meshes since instanced meshes have position (0,0,0)
+        // and individual block positions are in instance matrices
+        // A more sophisticated approach would check instance matrices, but that's expensive
+        // The main performance gain comes from caching, not spatial filtering in this case
+        return this.cachedInstancedMeshes;
     }
 
     initializeInventory() {
@@ -673,7 +698,14 @@ class VoxelGame {
         }
     }
 
-    updateBlockHighlight() {
+    updateBlockHighlight(deltaTime) {
+        // Throttle updates to improve performance
+        this.highlightUpdateTimer += deltaTime;
+        if (this.highlightUpdateTimer < this.highlightUpdateInterval) {
+            return;
+        }
+        this.highlightUpdateTimer = 0;
+
         // Disable block highlighting when player is completely underwater
         const playerHeadY = this.player.position.y + 1.6; // Eye level
         if (playerHeadY <= this.waterLevel) {
@@ -688,16 +720,8 @@ class VoxelGame {
         this.raycaster.set(this.camera.position, direction);
         this.raycaster.far = 10; // Limit to 10 blocks distance
 
-        // Find all objects to test against (grass, dirt, stone meshes)
-        const testObjects = [];
-        this.scene.traverse(child => {
-            if (child instanceof THREE.InstancedMesh) {
-                testObjects.push(child);
-            }
-        });
-
-        // Perform raycast
-        const intersects = this.raycaster.intersectObjects(testObjects);
+        // Use cached meshes for performance
+        const intersects = this.raycaster.intersectObjects(this.cachedInstancedMeshes);
 
         if (intersects.length > 0) {
             const intersection = intersects[0];
@@ -1042,9 +1066,11 @@ class VoxelGame {
         this.updatePig(deltaTime);
         this.updatePowerUp(deltaTime);
         this.updateCamera();
-        this.updateBlockHighlight();
         this.updateCoordinateDisplay();
         this.updateFPS();
+
+        // Optimized block highlighting
+        this.updateBlockHighlight(deltaTime);
 
         // Update held item animation
         const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
