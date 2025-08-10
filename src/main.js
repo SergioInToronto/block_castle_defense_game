@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Terrain } from './terrain.js';
 
 
-const RENDER_DISTANCE = 1000; // Maximum render and culling distance
+const RENDER_DISTANCE = 100; // Maximum render and culling distance
 
 class VoxelGame {
     constructor() {
@@ -25,7 +25,7 @@ class VoxelGame {
         };
 
         // World settings
-        this.worldSize = 180; // 180x180 blocks
+        this.worldSize = 225; // 225x225 blocks
         this.blockSize = 1;
         this.world = new Map();
         this.waterLevel = 7; // Water appears at y=8 and below
@@ -41,7 +41,7 @@ class VoxelGame {
         );
 
         // Player settings
-        this.spawnPosition = new THREE.Vector3(150, 20, 150);
+        this.spawnPosition = new THREE.Vector3(100, 20, 100);
         this.player = {
             position: this.spawnPosition.clone(),
             velocity: new THREE.Vector3(0, 0, 0),
@@ -80,7 +80,7 @@ class VoxelGame {
         // Pig settings
         this.pig = {
             mesh: null,
-            position: new THREE.Vector3(140, 20, 140),
+            position: new THREE.Vector3(90, 20, 90),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 2,
             jumpPower: 8,
@@ -1069,8 +1069,8 @@ class VoxelGame {
         this.updateCoordinateDisplay();
         this.updateFPS();
 
-        // Optimized block highlighting
-        this.updateBlockHighlight(deltaTime);
+        // Block highlighting is nice but devastates performance...
+        // this.updateBlockHighlight(deltaTime);
 
         // Update held item animation
         const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
