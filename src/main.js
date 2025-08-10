@@ -22,10 +22,20 @@ class VoxelGame {
         this.world = new Map();
         this.waterLevel = 7; // Water appears at y=8 and below
 
+        // Access terrain-related functionality
+        this.terrain = new Terrain(
+            this.worldSize,
+            this.blockSize,
+            this.waterLevel,
+            this.world,
+            this.scene,
+            RENDER_DISTANCE
+        );
+
         // Player settings
-        this.spawnPosition = new THREE.Vector3(250, 20, 250);
+        this.spawnPosition = new THREE.Vector3(150, 20, 150);
         this.player = {
-            position: new THREE.Vector3(150, 20, 150),
+            position: this.spawnPosition.clone(),
             velocity: new THREE.Vector3(0, 0, 0),
             speed: 10,
             jumpPower: 10,
@@ -97,11 +107,9 @@ class VoxelGame {
                 color: 0x8b4513,
             },
         };
-
-        this.init();
     }
 
-    init() {
+    initialize() {
         // Setup renderer
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0x87ceeb);
@@ -115,16 +123,6 @@ class VoxelGame {
 
         // Add lighting
         this.setupLighting();
-
-        // Access terrain-related functionality
-        this.terrain = new Terrain(
-            this.worldSize,
-            this.blockSize,
-            this.waterLevel,
-            this.world,
-            this.scene,
-            RENDER_DISTANCE
-        );
 
         // Generate world
         this.terrain.generateWorld();
@@ -149,9 +147,6 @@ class VoxelGame {
 
         // Setup held item display
         this.setupHeldItemDisplay();
-
-        // Start game loop
-        this.animate();
 
         console.log('3D Voxel Game initialized!');
     }
@@ -1015,8 +1010,8 @@ class VoxelGame {
         this.camera.rotation.x = this.pitch;
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
+    run() {
+        requestAnimationFrame(() => this.run());
 
         const deltaTime = this.clock.getDelta();
 
@@ -1033,6 +1028,7 @@ class VoxelGame {
         this.updateHeldItemAnimation(deltaTime, isWalking);
 
         // Perform block culling for performance
+        // TODO: this works, but does it *improve* performance???
         this.terrain.performCulling(this.player.position, this.yaw);
 
         this.renderer.render(this.scene, this.camera);
@@ -1040,4 +1036,6 @@ class VoxelGame {
 }
 
 // Start the game
-new VoxelGame();
+const game = new VoxelGame();
+game.initialize();
+game.run();
