@@ -1,3 +1,4 @@
 [tools]
 npm = "11"
+node = "22"
 just = "1"
