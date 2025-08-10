@@ -163,7 +163,7 @@ class VoxelGame {
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
         directionalLight.shadow.camera.near = 0.1;
-        directionalLight.shadow.camera.far = 150;
+        directionalLight.shadow.camera.far = 1000;
         directionalLight.shadow.camera.left = -300;
         directionalLight.shadow.camera.right = 300;
         directionalLight.shadow.camera.top = 300;
