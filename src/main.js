@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import Stats from 'stats.js';
 import { Terrain } from './terrain.js';
 import { MessageSystem } from './messageSystem.js';
 import { debounce } from './utils.js';
@@ -25,10 +24,6 @@ class VoxelGame {
             current: 0,
             updateInterval: 1000, // Update every 1000ms (1 second)
         };
-
-        // Stats.js performance monitor
-        this.stats = new Stats();
-        this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 
         // World settings
         this.worldSize = 225; // 225x225 blocks
@@ -149,12 +144,6 @@ class VoxelGame {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('game-container').appendChild(this.renderer.domElement);
-
-        // Add stats.js to the page
-        document.body.appendChild(this.stats.dom);
-        this.stats.dom.style.position = 'absolute';
-        this.stats.dom.style.top = '10px';
-        this.stats.dom.style.right = '10px';
 
         // Setup camera
         this.camera.position.copy(this.player.position);
@@ -1362,14 +1351,8 @@ class VoxelGame {
         this.camera.rotation.x = this.pitch;
     }
 
-    runWithStats() {
-        this.stats.begin();
-        this.run()
-        this.stats.end();
-    }
-
     run() {
-        requestAnimationFrame(() => this.runWithStats());
+        requestAnimationFrame(() => this.run());
 
         const deltaTime = this.clock.getDelta();
 
@@ -1401,4 +1384,4 @@ class VoxelGame {
 // Start the game
 const game = new VoxelGame();
 game.initialize();
-game.runWithStats();
+game.run();
