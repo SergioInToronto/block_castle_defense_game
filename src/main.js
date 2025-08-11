@@ -834,29 +834,31 @@ class VoxelGame {
         let attempts = 0;
         let validPosition = false;
 
-        while (!validPosition && attempts < 50) {
-            const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-            const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-            const groundY = this.terrain.getGroundHeight(x, z);
+        // disable goblin random spawn for now
 
-            // Make sure it's above water level and not too close to player
-            if (groundY > this.waterLevel + 1) {
-                const distToPlayer = Math.sqrt(
-                    Math.pow(x - this.player.position.x, 2) +
-                        Math.pow(z - this.player.position.z, 2)
-                );
+        // while (!validPosition && attempts < 50) {
+        //     const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+        //     const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+        //     const groundY = this.terrain.getGroundHeight(x, z);
 
-                if (distToPlayer > 15) {
-                    this.goblin.position.set(x, groundY, z);
-                    validPosition = true;
-                }
-            }
-            attempts++;
-        }
+        //     // Make sure it's above water level and not too close to player
+        //     if (groundY > this.waterLevel + 1) {
+        //         const distToPlayer = Math.sqrt(
+        //             Math.pow(x - this.player.position.x, 2) +
+        //                 Math.pow(z - this.player.position.z, 2)
+        //         );
+
+        //         if (distToPlayer > 15) {
+        //             this.goblin.position.set(x, groundY, z);
+        //             validPosition = true;
+        //         }
+        //     }
+        //     attempts++;
+        // }
 
         // Fallback position if no valid position found
         if (!validPosition) {
-            this.goblin.position.set(110, 15, 110);
+            this.goblin.position.set(110, 15, 80);
         }
     }
 
