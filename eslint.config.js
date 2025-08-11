@@ -10,7 +10,10 @@ module.exports = [
                 console: 'readonly',
                 document: 'readonly',
                 window: 'readonly',
-                requestAnimationFrame: 'readonly'
+                requestAnimationFrame: 'readonly',
+                setTimeout: 'readonly',
+                performance: 'readonly',
+                Date: 'readonly'
             }
         },
         rules: {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Terrain } from './terrain.js';
-
+import { MessageSystem } from './messageSystem.js';
+import { debounce } from './utils.js';
 
 const RENDER_DISTANCE = 100; // Maximum render and culling distance
 
@@ -103,6 +104,19 @@ class VoxelGame {
             bobHeight: 0.5,
         };
 
+        // Goblin settings
+        this.goblin = {
+            mesh: null,
+            position: new THREE.Vector3(0, 0, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            speed: 1.5,
+            onGround: true,
+            targetPosition: null,
+            moveTimer: 0,
+            animationTimer: 0,
+            spear: null,
+        };
+
         // Inventory system
         this.inventory = {
             hotbar: new Array(6).fill(null),
@@ -118,6 +132,9 @@ class VoxelGame {
                 color: 0x8b4513,
             },
         };
+
+        // Message system
+        this.messageSystem = new MessageSystem();
     }
 
     initialize() {
@@ -156,11 +173,17 @@ class VoxelGame {
         // Create power-up
         this.createPowerUp();
 
+        // Create goblin
+        this.createGoblin();
+
         // Initialize inventory
         this.initializeInventory();
 
         // Setup held item display
         this.setupHeldItemDisplay();
+
+        // Show welcome message
+        this.messageSystem.addMessage('Welcome to Block Castle Defense!', 'info');
 
         console.log('3D Voxel Game initialized!');
     }
@@ -193,7 +216,9 @@ class VoxelGame {
                 this.cachedInstancedMeshes.push(child);
             }
         });
-        console.log(`Cached ${this.cachedInstancedMeshes.length} instanced meshes for block highlighting`);
+        console.log(
+            `Cached ${this.cachedInstancedMeshes.length} instanced meshes for block highlighting`
+        );
     }
 
     getNearbyInstancedMeshes(position, maxDistance) {
@@ -328,7 +353,7 @@ class VoxelGame {
         this.heldItem.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
-            premultipliedAlpha: false
+            premultipliedAlpha: false,
         });
         this.heldItem.renderer.setSize(400, 400);
         this.heldItem.renderer.setClearColor(0x000000, 0); // Transparent background
@@ -384,7 +409,7 @@ class VoxelGame {
         this.heldItem.baseRotation = {
             x: this.heldItem.mesh.rotation.x,
             y: this.heldItem.mesh.rotation.y,
-            z: this.heldItem.mesh.rotation.z
+            z: this.heldItem.mesh.rotation.z,
         };
 
         this.heldItem.scene.add(this.heldItem.mesh);
@@ -405,15 +430,18 @@ class VoxelGame {
             this.heldItem.mesh.position.y = -0.2 + this.heldItem.bobOffset;
 
             // Add slight sway
-            this.heldItem.mesh.rotation.z = this.heldItem.baseRotation.z +
+            this.heldItem.mesh.rotation.z =
+                this.heldItem.baseRotation.z +
                 Math.sin(this.heldItem.animationTimer * bobSpeed * 0.5) * swayAmount;
         } else {
             // Idle gentle sway
             const idleSpeed = 1.5;
             const idleAmount = 0.01;
 
-            this.heldItem.mesh.position.y = -0.2 + Math.sin(this.heldItem.animationTimer * idleSpeed) * idleAmount;
-            this.heldItem.mesh.rotation.z = this.heldItem.baseRotation.z +
+            this.heldItem.mesh.position.y =
+                -0.2 + Math.sin(this.heldItem.animationTimer * idleSpeed) * idleAmount;
+            this.heldItem.mesh.rotation.z =
+                this.heldItem.baseRotation.z +
                 Math.sin(this.heldItem.animationTimer * idleSpeed * 0.8) * idleAmount;
         }
 
@@ -432,8 +460,6 @@ class VoxelGame {
         // Render the held item
         this.heldItem.renderer.render(this.heldItem.scene, this.heldItem.camera);
     }
-
-
 
     createPlayer() {
         // Create human-shaped player (2 blocks tall, 1 block wide)
@@ -602,7 +628,7 @@ class VoxelGame {
             { x: 0.3, z: -0.5 }, // Back right
         ];
 
-        legPositions.forEach((pos) => {
+        legPositions.forEach(pos => {
             const leg = new THREE.Mesh(legGeometry, pigBodyMaterial);
             leg.position.set(pos.x, 0.2, pos.z);
             leg.castShadow = true;
@@ -696,6 +722,158 @@ class VoxelGame {
         if (!validPosition) {
             this.powerUp.position.set(400, 15, 400);
         }
+    }
+
+    createGoblin() {
+        // Create goblin group
+        const goblinGroup = new THREE.Group();
+
+        // Materials
+        const skinMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c4e }); // Dark green
+        const clothMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 }); // Brown
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red eyes
+        const spearMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 }); // Dark brown
+        const metalMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 }); // Gray
+
+        // Body (torso)
+        const bodyGeometry = new THREE.BoxGeometry(0.5, 0.6, 0.3);
+        const body = new THREE.Mesh(bodyGeometry, skinMaterial);
+        body.position.y = 0.6;
+        body.castShadow = true;
+        goblinGroup.add(body);
+
+        // Head
+        const headGeometry = new THREE.BoxGeometry(0.4, 0.35, 0.35);
+        const head = new THREE.Mesh(headGeometry, skinMaterial);
+        head.position.y = 1.1;
+        head.castShadow = true;
+        goblinGroup.add(head);
+
+        // Ears (pointed)
+        const earGeometry = new THREE.ConeGeometry(0.08, 0.2, 4);
+        const leftEar = new THREE.Mesh(earGeometry, skinMaterial);
+        leftEar.position.set(-0.25, 1.15, 0);
+        leftEar.rotation.z = -Math.PI / 4;
+        goblinGroup.add(leftEar);
+
+        const rightEar = new THREE.Mesh(earGeometry, skinMaterial);
+        rightEar.position.set(0.25, 1.15, 0);
+        rightEar.rotation.z = Math.PI / 4;
+        goblinGroup.add(rightEar);
+
+        // Eyes
+        const eyeGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.1, 1.15, 0.15);
+        goblinGroup.add(leftEye);
+
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.1, 1.15, 0.15);
+        goblinGroup.add(rightEye);
+
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.15, 0.5, 0.15);
+        const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+        leftArm.position.set(-0.35, 0.6, 0);
+        leftArm.castShadow = true;
+        goblinGroup.add(leftArm);
+
+        const rightArm = new THREE.Mesh(armGeometry, skinMaterial);
+        rightArm.position.set(0.35, 0.6, 0);
+        rightArm.castShadow = true;
+        goblinGroup.add(rightArm);
+
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+        const leftLeg = new THREE.Mesh(legGeometry, clothMaterial);
+        leftLeg.position.set(-0.15, 0.25, 0);
+        leftLeg.castShadow = true;
+        goblinGroup.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeometry, clothMaterial);
+        rightLeg.position.set(0.15, 0.25, 0);
+        rightLeg.castShadow = true;
+        goblinGroup.add(rightLeg);
+
+        // Create spear
+        const spearGroup = new THREE.Group();
+
+        // Spear shaft
+        const shaftGeometry = new THREE.CylinderGeometry(0.03, 0.03, 1.8);
+        const shaft = new THREE.Mesh(shaftGeometry, spearMaterial);
+        shaft.position.y = 0.9;
+        shaft.castShadow = true;
+        spearGroup.add(shaft);
+
+        // Spear tip
+        const tipGeometry = new THREE.ConeGeometry(0.06, 0.3, 4);
+        const tip = new THREE.Mesh(tipGeometry, metalMaterial);
+        tip.position.y = 1.95;
+        tip.castShadow = true;
+        spearGroup.add(tip);
+
+        // Position spear in goblin's right hand
+        spearGroup.position.set(0.35, 0.4, 0);
+        spearGroup.rotation.z = Math.PI / 8; // Slight angle
+        goblinGroup.add(spearGroup);
+        this.goblin.spear = spearGroup;
+
+        // Find random spawn position (similar to power-up)
+        this.findGoblinSpawnPosition();
+        goblinGroup.position.copy(this.goblin.position);
+
+        this.scene.add(goblinGroup);
+        this.goblin.mesh = goblinGroup;
+
+        // Set initial target position
+        this.setNewGoblinTarget();
+    }
+
+    findGoblinSpawnPosition() {
+        // Try to find a good spawn position (not in water, on solid ground)
+        let attempts = 0;
+        let validPosition = false;
+
+        while (!validPosition && attempts < 50) {
+            const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+            const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
+            const groundY = this.terrain.getGroundHeight(x, z);
+
+            // Make sure it's above water level and not too close to player
+            if (groundY > this.waterLevel + 1) {
+                const distToPlayer = Math.sqrt(
+                    Math.pow(x - this.player.position.x, 2) +
+                        Math.pow(z - this.player.position.z, 2)
+                );
+
+                if (distToPlayer > 15) {
+                    this.goblin.position.set(x, groundY, z);
+                    validPosition = true;
+                }
+            }
+            attempts++;
+        }
+
+        // Fallback position if no valid position found
+        if (!validPosition) {
+            this.goblin.position.set(110, 15, 110);
+        }
+    }
+
+    setNewGoblinTarget() {
+        // Choose a random point within a reasonable distance
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 10 + Math.random() * 20; // 10-30 blocks away
+
+        const targetX = this.goblin.position.x + Math.cos(angle) * distance;
+        const targetZ = this.goblin.position.z + Math.sin(angle) * distance;
+
+        // Clamp to world bounds
+        const clampedX = Math.max(5, Math.min(this.worldSize - 5, targetX));
+        const clampedZ = Math.max(5, Math.min(this.worldSize - 5, targetZ));
+
+        this.goblin.targetPosition = new THREE.Vector3(clampedX, 0, clampedZ);
+        this.goblin.moveTimer = 0;
     }
 
     updateBlockHighlight(deltaTime) {
@@ -902,7 +1080,103 @@ class VoxelGame {
         this.player.hasDoubleJump = true;
         this.player.canDoubleJump = true;
 
+        // Show achievement message
+        this.messageSystem.addMessage('Power-up collected!', 'achievement');
+        this.messageSystem.addMessage('Double jump unlocked!', 'success');
+
         console.log('Power-up collected! Double jump unlocked!');
+    }
+
+    updateGoblin(deltaTime) {
+        if (!this.goblin.mesh) return;
+
+        // Update timers
+        this.goblin.moveTimer += deltaTime;
+        this.goblin.animationTimer += deltaTime;
+
+        // Choose new target every 10 seconds
+        if (this.goblin.moveTimer >= 10) {
+            this.setNewGoblinTarget();
+        }
+
+        // Move towards target
+        if (this.goblin.targetPosition) {
+            const direction = new THREE.Vector3()
+                .subVectors(this.goblin.targetPosition, this.goblin.position)
+                .normalize();
+
+            // Only move horizontally
+            direction.y = 0;
+
+            // Calculate distance to target
+            const distanceToTarget = this.goblin.position.distanceTo(this.goblin.targetPosition);
+
+            // Move if not close enough
+            if (distanceToTarget > 1) {
+                // Update position
+                this.goblin.position.x += direction.x * this.goblin.speed * deltaTime;
+                this.goblin.position.z += direction.z * this.goblin.speed * deltaTime;
+
+                // Face movement direction
+                if (direction.length() > 0) {
+                    const angle = Math.atan2(direction.x, direction.z);
+                    this.goblin.mesh.rotation.y = angle;
+                }
+            }
+        }
+
+        // Apply gravity
+        this.goblin.velocity.y -= 15 * deltaTime;
+
+        // Update vertical position
+        this.goblin.position.y += this.goblin.velocity.y * deltaTime;
+
+        // Ground collision
+        const groundY = this.terrain.getGroundHeight(
+            this.goblin.position.x,
+            this.goblin.position.z
+        );
+        if (this.goblin.position.y <= groundY) {
+            this.goblin.position.y = groundY;
+            this.goblin.velocity.y = 0;
+            this.goblin.onGround = true;
+        }
+
+        // Keep goblin within world bounds
+        this.goblin.position.x = Math.max(5, Math.min(this.worldSize - 5, this.goblin.position.x));
+        this.goblin.position.z = Math.max(5, Math.min(this.worldSize - 5, this.goblin.position.z));
+
+        // Walking animation
+        this.animateGoblin();
+
+        // Update mesh position
+        this.goblin.mesh.position.copy(this.goblin.position);
+    }
+
+    animateGoblin() {
+        if (!this.goblin.mesh) return;
+
+        // Walking animation - subtle bob
+        const walkSpeed = 4;
+        const bobAmount = 0.02;
+
+        // Calculate if goblin is moving
+        const moving =
+            this.goblin.targetPosition &&
+            this.goblin.position.distanceTo(this.goblin.targetPosition) > 1;
+
+        if (moving) {
+            // Body bob
+            const bodyBob = Math.sin(this.goblin.animationTimer * walkSpeed) * bobAmount;
+            this.goblin.mesh.children[0].position.y = 0.6 + bodyBob; // Body
+
+            // Spear bob
+            if (this.goblin.spear) {
+                const spearBob =
+                    Math.sin(this.goblin.animationTimer * walkSpeed + Math.PI / 4) * 0.01;
+                this.goblin.spear.position.y = 0.4 + spearBob;
+            }
+        }
     }
 
     handleInput(deltaTime) {
@@ -935,9 +1209,26 @@ class VoxelGame {
 
         // Reset position
         if (this.keys['KeyR']) {
-            this.player.position.copy(this.spawnPosition);
-            this.player.velocity.set(0, 0, 0);
-            this.player.onGround = false;
+            debounce(() => {
+                this.player.position.copy(this.spawnPosition);
+                this.player.velocity.set(0, 0, 0);
+                this.player.onGround = false;
+                this.messageSystem.addMessage('Position reset!', 'info');
+            }, 2000);
+        }
+
+        // Test messages with M key
+        if (this.keys['KeyM']) {
+            this.keys['KeyM'] = false; // Prevent spam
+            const messages = [
+                { text: 'This is an info message', type: 'info' },
+                { text: 'Warning: Low health!', type: 'warning' },
+                { text: 'Error: Cannot place block here', type: 'error' },
+                { text: 'Achievement unlocked!', type: 'achievement' },
+                { text: 'Quest completed!', type: 'success' },
+            ];
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            this.messageSystem.addMessage(randomMessage.text, randomMessage.type);
         }
     }
 
@@ -987,7 +1278,10 @@ class VoxelGame {
         // Check if landing on ground
         if (velocity.y <= 0) {
             // Falling or on ground
-            const groundY = this.terrain.getGroundHeight(this.player.position.x, this.player.position.z);
+            const groundY = this.terrain.getGroundHeight(
+                this.player.position.x,
+                this.player.position.z
+            );
             if (newY <= groundY + 0.1) {
                 // Small epsilon for ground detection
                 this.player.position.y = groundY;
@@ -1044,7 +1338,6 @@ class VoxelGame {
         return false;
     }
 
-
     updateCamera() {
         // Update camera position (follow player)
         this.camera.position.copy(this.player.position);
@@ -1065,6 +1358,7 @@ class VoxelGame {
         this.updatePhysics(deltaTime);
         this.updatePig(deltaTime);
         this.updatePowerUp(deltaTime);
+        this.updateGoblin(deltaTime);
         this.updateCamera();
         this.updateCoordinateDisplay();
         this.updateFPS();
@@ -1073,7 +1367,8 @@ class VoxelGame {
         // this.updateBlockHighlight(deltaTime);
 
         // Update held item animation
-        const isWalking = this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
+        const isWalking =
+            this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
         this.updateHeldItemAnimation(deltaTime, isWalking);
 
         // Perform block culling for performance

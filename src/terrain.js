@@ -63,7 +63,7 @@ export class Terrain {
             dirt: [],
             stone: [],
             cobblestone: [],
-            water: []
+            water: [],
         };
 
         // Count blocks for each material
@@ -150,7 +150,7 @@ export class Terrain {
             dirt: dirtInstanced,
             stone: stoneInstanced,
             cobblestone: cobblestoneInstanced,
-            water: waterInstanced
+            water: waterInstanced,
         };
 
         grassInstanced.castShadow = true;
@@ -305,13 +305,9 @@ export class Terrain {
         const dummyMatrix = new THREE.Matrix4().makeScale(0, 0, 0); // Hidden block matrix
 
         // Calculate player forward direction (180-degree view)
-        const playerForward = new THREE.Vector3(
-            -Math.sin(playerYaw),
-            0,
-            -Math.cos(playerYaw)
-        );
+        const playerForward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
 
-        let visibleIndex = 0;
+        const visibleIndex = 0;
 
         blocks.forEach((block, index) => {
             const blockPosition = new THREE.Vector3(block.x, block.y, block.z);
