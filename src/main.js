@@ -831,8 +831,8 @@ class VoxelGame {
 
     findGoblinSpawnPosition() {
         // Try to find a good spawn position (not in water, on solid ground)
-        let attempts = 0;
-        let validPosition = false;
+        const attempts = 0;
+        const validPosition = false;
 
         // disable goblin random spawn for now
 
