@@ -19,6 +19,7 @@ export class Terrain {
     }
 
     generateWorld() {
+        console.log("Geerting world...", )
         // Generate terrain data first
         const terrainData = {};
         for (let x = 0; x < this.worldSize; x += 1) {

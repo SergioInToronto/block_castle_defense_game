@@ -26,7 +26,7 @@ class VoxelGame {
         };
 
         // World settings
-        this.worldSize = 225; // 225x225 blocks
+        this.worldSize = 150; // the world is square: worldSize x worldSize
         this.blockSize = 1;
         this.world = new Map();
         this.waterLevel = 7; // Water appears at y=8 and below
@@ -58,14 +58,6 @@ class VoxelGame {
         this.pitch = 0;
         this.yaw = 0;
 
-        // Block highlighting
-        this.raycaster = new THREE.Raycaster();
-        this.highlightBox = null;
-        this.targetedBlock = null;
-        this.cachedInstancedMeshes = []; // Cache for performance
-        this.highlightUpdateTimer = 0;
-        this.highlightUpdateInterval = 0.05; // Update every 50ms (20 FPS)
-
         // Held item display
         this.heldItem = {
             mesh: null,
@@ -93,35 +85,15 @@ class VoxelGame {
             legs: [],
         };
 
-        // Power-up settings
-        this.powerUp = {
-            mesh: null,
-            position: new THREE.Vector3(0, 0, 0),
-            baseY: 0,
-            animationTimer: 0,
-            rotationSpeed: 2,
-            bobSpeed: 3,
-            bobHeight: 0.5,
-        };
-
-        // Goblin settings
-        this.goblin = {
-            mesh: null,
-            position: new THREE.Vector3(0, 0, 0),
-            velocity: new THREE.Vector3(0, 0, 0),
-            speed: 1.5,
-            onGround: true,
-            targetPosition: null,
-            moveTimer: 0,
-            animationTimer: 0,
-            spear: null,
-        };
-
         // Inventory system
         this.inventory = {
             hotbar: new Array(6).fill(null),
             selectedSlot: 0,
         };
+        this.inventory.hotbar[0] = {
+            type: 'dirt'
+        };
+
 
         // Item types
         this.itemTypes = {
@@ -155,29 +127,14 @@ class VoxelGame {
         // Generate world
         this.terrain.generateWorld();
 
-        // Cache instanced meshes for block highlighting performance
-        this.cacheInstancedMeshes();
-
         // Create player
         this.createPlayer();
 
         // Setup controls
         this.setupControls();
 
-        // Create block highlight
-        this.createHighlightBox();
-
         // Create pig
         this.createPig();
-
-        // Create power-up
-        this.createPowerUp();
-
-        // Create goblin
-        this.createGoblin();
-
-        // Initialize inventory
-        this.initializeInventory();
 
         // Setup held item display
         this.setupHeldItemDisplay();
@@ -208,38 +165,8 @@ class VoxelGame {
         this.scene.add(directionalLight);
     }
 
-    cacheInstancedMeshes() {
-        // Cache instanced meshes once to avoid scene traversal every frame
-        this.cachedInstancedMeshes = [];
-        this.scene.traverse(child => {
-            if (child instanceof THREE.InstancedMesh) {
-                this.cachedInstancedMeshes.push(child);
-            }
-        });
-        console.log(
-            `Cached ${this.cachedInstancedMeshes.length} instanced meshes for block highlighting`
-        );
-    }
-
-    getNearbyInstancedMeshes(position, maxDistance) {
-        // For now, return all cached meshes since instanced meshes have position (0,0,0)
-        // and individual block positions are in instance matrices
-        // A more sophisticated approach would check instance matrices, but that's expensive
-        // The main performance gain comes from caching, not spatial filtering in this case
-        return this.cachedInstancedMeshes;
-    }
-
-    initializeInventory() {
-        // Add 25 dirt blocks to the first hotbar slot
-        this.inventory.hotbar[0] = {
-            type: 'dirt',
-            count: 25,
-        };
-        this.updateHotbarDisplay();
-    }
-
     updateHotbarDisplay() {
-        for (let i = 0; i < 6; i++) {
+        for (let i = 1; i < 7; i++) {
             const slotElement = document.querySelector(`[data-slot="${i}"]`);
             const iconElement = slotElement.querySelector('.item-icon');
             const countElement = slotElement.querySelector('.item-count');
@@ -248,8 +175,8 @@ class VoxelGame {
             if (iconElement) iconElement.remove();
             if (countElement) countElement.remove();
 
-            const item = this.inventory.hotbar[i];
-            if (item && item.count > 0) {
+            const item = this.inventory.hotbar[i - 1];
+            if (item) {
                 // Add item icon
                 const newIcon = document.createElement('div');
                 newIcon.className = 'item-icon';
@@ -261,7 +188,6 @@ class VoxelGame {
                 // Add item count
                 const newCount = document.createElement('div');
                 newCount.className = 'item-count';
-                newCount.textContent = item.count.toString();
                 slotElement.appendChild(newCount);
             }
 
@@ -334,7 +260,7 @@ class VoxelGame {
     }
 
     selectHotbarSlot(slotIndex) {
-        if (slotIndex >= 0 && slotIndex < 6) {
+        if (slotIndex >= 1 && slotIndex < 7) {
             this.inventory.selectedSlot = slotIndex;
             this.updateHotbarDisplay();
             this.updateHeldItemDisplay();
@@ -385,7 +311,7 @@ class VoxelGame {
         }
 
         const selectedItem = this.getSelectedItem();
-        if (selectedItem && selectedItem.count > 0) {
+        if (selectedItem) {
             // Create held item mesh based on item type
             if (selectedItem.type === 'dirt') {
                 this.createHeldBlock();
@@ -394,6 +320,7 @@ class VoxelGame {
     }
 
     createHeldBlock() {
+        console.log("Creating held item...  ")
         const geometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
         const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
 
@@ -534,7 +461,7 @@ class VoxelGame {
 
             // Hotbar controls (number keys 1-6)
             if (event.code >= 'Digit1' && event.code <= 'Digit6') {
-                const slotIndex = parseInt(event.code.charAt(5)) - 1; // Extract digit and convert to 0-based index
+                const slotIndex = parseInt(event.code.charAt(5)); // Extract digit and convert to 0-based index
                 this.selectHotbarSlot(slotIndex);
             }
         });
@@ -563,20 +490,6 @@ class VoxelGame {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
-    }
-
-    createHighlightBox() {
-        // Create wireframe box for highlighting blocks
-        const highlightGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01);
-        const highlightMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.8,
-        });
-        this.highlightBox = new THREE.Mesh(highlightGeometry, highlightMaterial);
-        this.highlightBox.visible = false;
-        this.scene.add(this.highlightBox);
     }
 
     createPig() {
@@ -648,283 +561,6 @@ class VoxelGame {
         pigGroup.position.copy(this.pig.position);
         this.scene.add(pigGroup);
         this.pig.mesh = pigGroup;
-    }
-
-    createPowerUp() {
-        // Create power-up group
-        const powerUpGroup = new THREE.Group();
-
-        // Materials
-        const coreMaterial = new THREE.MeshLambertMaterial({
-            color: 0xffd700, // Gold color
-            emissive: 0x332200, // Slight glow
-        });
-        const orbMaterial = new THREE.MeshLambertMaterial({
-            color: 0x00ffff, // Cyan color
-            transparent: true,
-            opacity: 0.8,
-        });
-
-        // Core cube (rotating inner part)
-        const coreGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-        const core = new THREE.Mesh(coreGeometry, coreMaterial);
-        core.castShadow = true;
-        powerUpGroup.add(core);
-
-        // Floating orbs around the core
-        const orbGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-        for (let i = 0; i < 4; i++) {
-            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-            const angle = (i / 4) * Math.PI * 2;
-            orb.position.set(
-                Math.cos(angle) * 0.8,
-                Math.sin(angle * 2) * 0.2,
-                Math.sin(angle) * 0.8
-            );
-            powerUpGroup.add(orb);
-        }
-
-        // Find random spawn position on ground
-        this.findRandomSpawnPosition();
-        powerUpGroup.position.copy(this.powerUp.position);
-        this.powerUp.baseY = this.powerUp.position.y;
-
-        this.scene.add(powerUpGroup);
-        this.powerUp.mesh = powerUpGroup;
-    }
-
-    findRandomSpawnPosition() {
-        // Try to find a good spawn position (not in water, on solid ground)
-        let attempts = 0;
-        let validPosition = false;
-
-        while (!validPosition && attempts < 50) {
-            const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-            const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-            const groundY = this.terrain.getGroundHeight(x, z);
-
-            // Make sure it's above water level and not too close to player
-            if (groundY > this.waterLevel + 1) {
-                const distToPlayer = Math.sqrt(
-                    Math.pow(x - this.player.position.x, 2) +
-                        Math.pow(z - this.player.position.z, 2)
-                );
-
-                if (distToPlayer > 20) {
-                    this.powerUp.position.set(x, groundY + 1, z);
-                    validPosition = true;
-                }
-            }
-            attempts++;
-        }
-
-        // Fallback position if no valid position found
-        if (!validPosition) {
-            this.powerUp.position.set(400, 15, 400);
-        }
-    }
-
-    createGoblin() {
-        // Create goblin group
-        const goblinGroup = new THREE.Group();
-
-        // Materials
-        const skinMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c4e }); // Dark green
-        const clothMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 }); // Brown
-        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red eyes
-        const spearMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 }); // Dark brown
-        const metalMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 }); // Gray
-
-        // Body (torso)
-        const bodyGeometry = new THREE.BoxGeometry(0.5, 0.6, 0.3);
-        const body = new THREE.Mesh(bodyGeometry, skinMaterial);
-        body.position.y = 0.6;
-        body.castShadow = true;
-        goblinGroup.add(body);
-
-        // Head
-        const headGeometry = new THREE.BoxGeometry(0.4, 0.35, 0.35);
-        const head = new THREE.Mesh(headGeometry, skinMaterial);
-        head.position.y = 1.1;
-        head.castShadow = true;
-        goblinGroup.add(head);
-
-        // Ears (pointed)
-        const earGeometry = new THREE.ConeGeometry(0.08, 0.2, 4);
-        const leftEar = new THREE.Mesh(earGeometry, skinMaterial);
-        leftEar.position.set(-0.25, 1.15, 0);
-        leftEar.rotation.z = -Math.PI / 4;
-        goblinGroup.add(leftEar);
-
-        const rightEar = new THREE.Mesh(earGeometry, skinMaterial);
-        rightEar.position.set(0.25, 1.15, 0);
-        rightEar.rotation.z = Math.PI / 4;
-        goblinGroup.add(rightEar);
-
-        // Eyes
-        const eyeGeometry = new THREE.SphereGeometry(0.05, 6, 6);
-        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        leftEye.position.set(-0.1, 1.15, 0.15);
-        goblinGroup.add(leftEye);
-
-        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        rightEye.position.set(0.1, 1.15, 0.15);
-        goblinGroup.add(rightEye);
-
-        // Arms
-        const armGeometry = new THREE.BoxGeometry(0.15, 0.5, 0.15);
-        const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
-        leftArm.position.set(-0.35, 0.6, 0);
-        leftArm.castShadow = true;
-        goblinGroup.add(leftArm);
-
-        const rightArm = new THREE.Mesh(armGeometry, skinMaterial);
-        rightArm.position.set(0.35, 0.6, 0);
-        rightArm.castShadow = true;
-        goblinGroup.add(rightArm);
-
-        // Legs
-        const legGeometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
-        const leftLeg = new THREE.Mesh(legGeometry, clothMaterial);
-        leftLeg.position.set(-0.15, 0.25, 0);
-        leftLeg.castShadow = true;
-        goblinGroup.add(leftLeg);
-
-        const rightLeg = new THREE.Mesh(legGeometry, clothMaterial);
-        rightLeg.position.set(0.15, 0.25, 0);
-        rightLeg.castShadow = true;
-        goblinGroup.add(rightLeg);
-
-        // Create spear
-        const spearGroup = new THREE.Group();
-
-        // Spear shaft
-        const shaftGeometry = new THREE.CylinderGeometry(0.03, 0.03, 1.8);
-        const shaft = new THREE.Mesh(shaftGeometry, spearMaterial);
-        shaft.position.y = 0.9;
-        shaft.castShadow = true;
-        spearGroup.add(shaft);
-
-        // Spear tip
-        const tipGeometry = new THREE.ConeGeometry(0.06, 0.3, 4);
-        const tip = new THREE.Mesh(tipGeometry, metalMaterial);
-        tip.position.y = 1.95;
-        tip.castShadow = true;
-        spearGroup.add(tip);
-
-        // Position spear in goblin's right hand
-        spearGroup.position.set(0.35, 0.4, 0);
-        spearGroup.rotation.z = Math.PI / 8; // Slight angle
-        goblinGroup.add(spearGroup);
-        this.goblin.spear = spearGroup;
-
-        // Find random spawn position (similar to power-up)
-        this.findGoblinSpawnPosition();
-        goblinGroup.position.copy(this.goblin.position);
-
-        this.scene.add(goblinGroup);
-        this.goblin.mesh = goblinGroup;
-
-        // Set initial target position
-        this.setNewGoblinTarget();
-    }
-
-    findGoblinSpawnPosition() {
-        // Try to find a good spawn position (not in water, on solid ground)
-        const attempts = 0;
-        const validPosition = false;
-
-        // disable goblin random spawn for now
-
-        // while (!validPosition && attempts < 50) {
-        //     const x = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-        //     const z = Math.floor(Math.random() * (this.worldSize - 20)) + 10;
-        //     const groundY = this.terrain.getGroundHeight(x, z);
-
-        //     // Make sure it's above water level and not too close to player
-        //     if (groundY > this.waterLevel + 1) {
-        //         const distToPlayer = Math.sqrt(
-        //             Math.pow(x - this.player.position.x, 2) +
-        //                 Math.pow(z - this.player.position.z, 2)
-        //         );
-
-        //         if (distToPlayer > 15) {
-        //             this.goblin.position.set(x, groundY, z);
-        //             validPosition = true;
-        //         }
-        //     }
-        //     attempts++;
-        // }
-
-        // Fallback position if no valid position found
-        if (!validPosition) {
-            this.goblin.position.set(110, 15, 80);
-        }
-    }
-
-    setNewGoblinTarget() {
-        // Choose a random point within a reasonable distance
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 10 + Math.random() * 20; // 10-30 blocks away
-
-        const targetX = this.goblin.position.x + Math.cos(angle) * distance;
-        const targetZ = this.goblin.position.z + Math.sin(angle) * distance;
-
-        // Clamp to world bounds
-        const clampedX = Math.max(5, Math.min(this.worldSize - 5, targetX));
-        const clampedZ = Math.max(5, Math.min(this.worldSize - 5, targetZ));
-
-        this.goblin.targetPosition = new THREE.Vector3(clampedX, 0, clampedZ);
-        this.goblin.moveTimer = 0;
-    }
-
-    updateBlockHighlight(deltaTime) {
-        // Throttle updates to improve performance
-        this.highlightUpdateTimer += deltaTime;
-        if (this.highlightUpdateTimer < this.highlightUpdateInterval) {
-            return;
-        }
-        this.highlightUpdateTimer = 0;
-
-        // Disable block highlighting when player is completely underwater
-        const playerHeadY = this.player.position.y + 1.6; // Eye level
-        if (playerHeadY <= this.waterLevel) {
-            this.highlightBox.visible = false;
-            this.targetedBlock = null;
-            return;
-        }
-
-        // Set up raycaster from camera center with limited range
-        const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(this.camera.quaternion);
-        this.raycaster.set(this.camera.position, direction);
-        this.raycaster.far = 10; // Limit to 10 blocks distance
-
-        // Use cached meshes for performance
-        const intersects = this.raycaster.intersectObjects(this.cachedInstancedMeshes);
-
-        if (intersects.length > 0) {
-            const intersection = intersects[0];
-
-            // Get the world position of the intersected block
-            const instanceMatrix = new THREE.Matrix4();
-            intersection.object.getMatrixAt(intersection.instanceId, instanceMatrix);
-            const position = new THREE.Vector3();
-            position.setFromMatrixPosition(instanceMatrix);
-
-            // Position highlight box at the block
-            this.highlightBox.position.copy(position);
-            this.highlightBox.visible = true;
-            this.targetedBlock = {
-                position: position.clone(),
-                instanceId: intersection.instanceId,
-                object: intersection.object,
-            };
-        } else {
-            // No block targeted
-            this.highlightBox.visible = false;
-            this.targetedBlock = null;
-        }
     }
 
     updateCoordinateDisplay() {
@@ -1025,159 +661,6 @@ class VoxelGame {
         if (this.pig.mesh && this.pig.mesh.children.length > 0) {
             const bodyBob = Math.sin(this.pig.animationTimer * walkSpeed * 2) * 0.02;
             this.pig.mesh.children[0].position.y = 0.3 + bodyBob; // Body is first child
-        }
-    }
-
-    updatePowerUp(deltaTime) {
-        if (!this.powerUp.mesh) return;
-
-        // Update animation timer
-        this.powerUp.animationTimer += deltaTime;
-
-        // Rotate the entire power-up
-        this.powerUp.mesh.rotation.y += this.powerUp.rotationSpeed * deltaTime;
-
-        // Bob up and down
-        const bobOffset =
-            Math.sin(this.powerUp.animationTimer * this.powerUp.bobSpeed) * this.powerUp.bobHeight;
-        this.powerUp.mesh.position.y = this.powerUp.baseY + bobOffset;
-
-        // Rotate the core cube faster
-        if (this.powerUp.mesh.children[0]) {
-            this.powerUp.mesh.children[0].rotation.x += deltaTime * 3;
-            this.powerUp.mesh.children[0].rotation.z += deltaTime * 2;
-        }
-
-        // Animate the floating orbs
-        for (let i = 1; i < this.powerUp.mesh.children.length; i++) {
-            const orb = this.powerUp.mesh.children[i];
-            const orbTime = this.powerUp.animationTimer + (i * Math.PI) / 2;
-            orb.position.y = Math.sin(orbTime * 2) * 0.2;
-        }
-
-        // Check collision with player
-        this.checkPowerUpCollision();
-    }
-
-    checkPowerUpCollision() {
-        if (!this.powerUp.mesh) return;
-
-        // Calculate distance between player and power-up
-        const distance = this.player.position.distanceTo(this.powerUp.mesh.position);
-
-        // If close enough, collect the power-up
-        if (distance < 2.0) {
-            this.collectPowerUp();
-        }
-    }
-
-    collectPowerUp() {
-        if (!this.powerUp.mesh) return;
-
-        // Remove power-up from scene
-        this.scene.remove(this.powerUp.mesh);
-        this.powerUp.mesh = null;
-
-        // Grant double jump ability
-        this.player.hasDoubleJump = true;
-        this.player.canDoubleJump = true;
-
-        // Show achievement message
-        this.messageSystem.addMessage('Power-up collected!', 'achievement');
-        this.messageSystem.addMessage('Double jump unlocked!', 'success');
-
-        console.log('Power-up collected! Double jump unlocked!');
-    }
-
-    updateGoblin(deltaTime) {
-        if (!this.goblin.mesh) return;
-
-        // Update timers
-        this.goblin.moveTimer += deltaTime;
-        this.goblin.animationTimer += deltaTime;
-
-        // Choose new target every 10 seconds
-        if (this.goblin.moveTimer >= 10) {
-            this.setNewGoblinTarget();
-        }
-
-        // Move towards target
-        if (this.goblin.targetPosition) {
-            const direction = new THREE.Vector3()
-                .subVectors(this.goblin.targetPosition, this.goblin.position)
-                .normalize();
-
-            // Only move horizontally
-            direction.y = 0;
-
-            // Calculate distance to target
-            const distanceToTarget = this.goblin.position.distanceTo(this.goblin.targetPosition);
-
-            // Move if not close enough
-            if (distanceToTarget > 1) {
-                // Update position
-                this.goblin.position.x += direction.x * this.goblin.speed * deltaTime;
-                this.goblin.position.z += direction.z * this.goblin.speed * deltaTime;
-
-                // Face movement direction
-                if (direction.length() > 0) {
-                    const angle = Math.atan2(direction.x, direction.z);
-                    this.goblin.mesh.rotation.y = angle;
-                }
-            }
-        }
-
-        // Apply gravity
-        this.goblin.velocity.y -= 15 * deltaTime;
-
-        // Update vertical position
-        this.goblin.position.y += this.goblin.velocity.y * deltaTime;
-
-        // Ground collision
-        const groundY = this.terrain.getGroundHeight(
-            this.goblin.position.x,
-            this.goblin.position.z
-        );
-        if (this.goblin.position.y <= groundY) {
-            this.goblin.position.y = groundY;
-            this.goblin.velocity.y = 0;
-            this.goblin.onGround = true;
-        }
-
-        // Keep goblin within world bounds
-        this.goblin.position.x = Math.max(5, Math.min(this.worldSize - 5, this.goblin.position.x));
-        this.goblin.position.z = Math.max(5, Math.min(this.worldSize - 5, this.goblin.position.z));
-
-        // Walking animation
-        this.animateGoblin();
-
-        // Update mesh position
-        this.goblin.mesh.position.copy(this.goblin.position);
-    }
-
-    animateGoblin() {
-        if (!this.goblin.mesh) return;
-
-        // Walking animation - subtle bob
-        const walkSpeed = 4;
-        const bobAmount = 0.02;
-
-        // Calculate if goblin is moving
-        const moving =
-            this.goblin.targetPosition &&
-            this.goblin.position.distanceTo(this.goblin.targetPosition) > 1;
-
-        if (moving) {
-            // Body bob
-            const bodyBob = Math.sin(this.goblin.animationTimer * walkSpeed) * bobAmount;
-            this.goblin.mesh.children[0].position.y = 0.6 + bodyBob; // Body
-
-            // Spear bob
-            if (this.goblin.spear) {
-                const spearBob =
-                    Math.sin(this.goblin.animationTimer * walkSpeed + Math.PI / 4) * 0.01;
-                this.goblin.spear.position.y = 0.4 + spearBob;
-            }
         }
     }
 
@@ -1359,23 +842,14 @@ class VoxelGame {
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
         this.updatePig(deltaTime);
-        this.updatePowerUp(deltaTime);
-        this.updateGoblin(deltaTime);
         this.updateCamera();
         this.updateCoordinateDisplay();
         this.updateFPS();
-
-        // Block highlighting is nice but devastates performance...
-        // this.updateBlockHighlight(deltaTime);
 
         // Update held item animation
         const isWalking =
             this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
         this.updateHeldItemAnimation(deltaTime, isWalking);
-
-        // Perform block culling for performance
-        // TODO: this works, but does it *improve* performance???
-        this.terrain.performCulling(this.player.position, this.yaw);
 
         this.renderer.render(this.scene, this.camera);
     }
