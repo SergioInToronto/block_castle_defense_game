@@ -50,6 +50,7 @@ class VoxelGame {
             jumpPower: 10,
             onGround: false,
             mesh: null,
+            shadow: null,
         };
 
         // Input handling
@@ -91,9 +92,8 @@ class VoxelGame {
             selectedSlot: 0,
         };
         this.inventory.hotbar[0] = {
-            type: 'dirt'
+            type: 'dirt',
         };
-
 
         // Item types
         this.itemTypes = {
@@ -320,7 +320,7 @@ class VoxelGame {
     }
 
     createHeldBlock() {
-        console.log("Creating held item...  ")
+        console.log('Creating held item...  ');
         const geometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
         const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
 
@@ -452,6 +452,22 @@ class VoxelGame {
         // Don't add player to scene - keep invisible for first-person view
         // this.scene.add(playerGroup);
         this.player.mesh = playerGroup;
+
+        // Create shadow plane
+        const shadowGeometry = new THREE.PlaneGeometry(1.5, 1.5);
+        const shadowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+        });
+        const shadowMesh = new THREE.Mesh(shadowGeometry, shadowMaterial);
+        shadowMesh.rotation.x = -Math.PI / 2;
+        shadowMesh.position.copy(this.player.position);
+        shadowMesh.position.y = 0.01; // Slightly above ground to prevent z-fighting
+        this.scene.add(shadowMesh);
+        this.player.shadow = shadowMesh;
     }
 
     setupControls() {
@@ -799,6 +815,18 @@ class VoxelGame {
         // Update player mesh position
         if (this.player.mesh) {
             this.player.mesh.position.copy(this.player.position);
+        }
+
+        // Update shadow position
+        if (this.player.shadow) {
+            this.player.shadow.position.x = this.player.position.x;
+            this.player.shadow.position.z = this.player.position.z;
+            // Place shadow slightly above ground level
+            const groundY = this.terrain.getGroundHeight(
+                this.player.position.x,
+                this.player.position.z
+            );
+            this.player.shadow.position.y = groundY + 0.01;
         }
     }
 

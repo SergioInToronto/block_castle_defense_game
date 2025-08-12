@@ -1,8 +1,7 @@
 const debounces = {};
 
 export function debounce(func, delay) {
-    const entry = debounces[func];
-    if (entry) return undefined;
+    if (debounces[func]) return undefined;
 
     const result = func.apply(this);
 
