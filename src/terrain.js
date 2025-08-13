@@ -260,4 +260,42 @@ export class Terrain {
         }
         return 0; // Default ground level
     }
+
+    addBlock(x, y, z, blockType) {
+        // Create a single block mesh at the specified position
+        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
+
+        // Select material based on block type
+        let material;
+        switch (blockType) {
+            case 'grass':
+                material = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
+                break;
+            case 'dirt':
+                material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+                break;
+            case 'stone':
+                material = new THREE.MeshLambertMaterial({ color: 0x696969 });
+                break;
+            case 'cobblestone':
+                material = new THREE.MeshLambertMaterial({ color: 0x6b6b6b });
+                break;
+            default:
+                material = new THREE.MeshLambertMaterial({ color: 0x4a7c59 }); // Default to grass
+        }
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Add to scene
+        this.scene.add(mesh);
+
+        // Store reference for potential removal later
+        if (!this.placedBlocks) {
+            this.placedBlocks = new Map();
+        }
+        this.placedBlocks.set(`${x},${y},${z}`, mesh);
+    }
 }

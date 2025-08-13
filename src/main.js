@@ -107,6 +107,10 @@ class VoxelGame {
 
         // Message system
         this.messageSystem = new MessageSystem();
+
+        // Raycaster for block interaction
+        this.raycaster = new THREE.Raycaster();
+        this.raycaster.far = 10; // 10 block reach distance
     }
 
     initialize() {
@@ -497,7 +501,24 @@ class VoxelGame {
 
         // Click to lock pointer
         this.renderer.domElement.addEventListener('click', () => {
-            this.renderer.domElement.requestPointerLock();
+            if (document.pointerLockElement !== this.renderer.domElement) {
+                this.renderer.domElement.requestPointerLock();
+            }
+        });
+
+        // Left click for block placement
+        this.renderer.domElement.addEventListener('mousedown', event => {
+            console.log(
+                'Mouse down event:',
+                event.button,
+                'Pointer locked:',
+                document.pointerLockElement === this.renderer.domElement
+            );
+            if (event.button === 0 && document.pointerLockElement === this.renderer.domElement) {
+                // Left click while pointer is locked
+                console.log('Calling placeBlock()');
+                this.placeBlock();
+            }
         });
 
         // Handle window resize
@@ -849,6 +870,117 @@ class VoxelGame {
             }
         }
         return false;
+    }
+
+    getTargetBlock() {
+        console.log('getTargetBlock() called');
+        // Cast ray from camera center
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+        console.log('Raycaster origin:', this.raycaster.ray.origin);
+        console.log('Raycaster direction:', this.raycaster.ray.direction);
+
+        // Get all meshes in the scene that could be blocks
+        const meshesToCheck = [];
+        this.scene.traverse(child => {
+            if (
+                child instanceof THREE.InstancedMesh ||
+                (child instanceof THREE.Mesh &&
+                    child !== this.player.mesh &&
+                    child !== this.player.shadow &&
+                    child !== this.pig.mesh)
+            ) {
+                meshesToCheck.push(child);
+            }
+        });
+
+        console.log('Meshes to check:', meshesToCheck.length);
+
+        // Cast ray against all block meshes
+        const intersections = this.raycaster.intersectObjects(meshesToCheck, false);
+        console.log('Raw intersections:', intersections.length);
+
+        if (intersections.length > 0) {
+            const intersection = intersections[0];
+            console.log('First intersection:', intersection);
+
+            // For instanced meshes, we need to get the instance position
+            if (intersection.object instanceof THREE.InstancedMesh) {
+                const instanceId = intersection.instanceId;
+                console.log('Instance ID:', instanceId);
+
+                // Get the world position of this instance
+                const matrix = new THREE.Matrix4();
+                intersection.object.getMatrixAt(instanceId, matrix);
+                const position = new THREE.Vector3();
+                position.setFromMatrixPosition(matrix);
+
+                console.log('Instance position:', position);
+
+                return {
+                    distance: intersection.distance,
+                    point: intersection.point,
+                    face: intersection.face,
+                    blockPos: position,
+                };
+            } else {
+                // Regular mesh (placed blocks)
+                const blockPos = intersection.object.position.clone();
+                console.log('Regular mesh position:', blockPos);
+
+                return {
+                    distance: intersection.distance,
+                    point: intersection.point,
+                    face: intersection.face,
+                    blockPos: blockPos,
+                };
+            }
+        }
+
+        console.log('No intersections found');
+        return null;
+    }
+
+    placeBlock() {
+        console.log('placeBlock() called');
+        const target = this.getTargetBlock();
+        console.log('Target block:', target);
+
+        if (target && target.face) {
+            // Calculate position for new block based on face normal
+            const normal = target.face.normal;
+            console.log('Face normal:', normal);
+            const newBlockPos = new THREE.Vector3(
+                Math.floor(target.blockPos.x + normal.x),
+                Math.floor(target.blockPos.y + normal.y),
+                Math.floor(target.blockPos.z + normal.z)
+            );
+            console.log('New block position:', newBlockPos);
+
+            // Check if block position is valid (not occupied and not colliding with player)
+            const blockKey = `${newBlockPos.x},${newBlockPos.y},${newBlockPos.z}`;
+            const isOccupied = this.world.has(blockKey);
+            const hasCollision = this.checkCollision(newBlockPos.x, newBlockPos.y, newBlockPos.z);
+            console.log(
+                'Block key:',
+                blockKey,
+                'Occupied:',
+                isOccupied,
+                'Collision:',
+                hasCollision
+            );
+
+            if (!isOccupied && !hasCollision) {
+                // Add block to world
+                this.world.set(blockKey, true);
+                console.log('Block added to world');
+
+                // Add visual representation
+                this.terrain.addBlock(newBlockPos.x, newBlockPos.y, newBlockPos.z, 'grass');
+                console.log('Visual block added');
+            }
+        } else {
+            console.log('No target found or no face');
+        }
     }
 
     updateCamera() {
