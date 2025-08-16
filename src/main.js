@@ -154,8 +154,8 @@ class VoxelGame {
         // this.scene.add(ambientLight);
 
         // Hemisphere light (sky and ground)
-        const skyColor = 0xB1E1FF;  // light blue
-        const groundColor = 0xB97A20;  // brownish orange
+        const skyColor = 0xb1e1ff; // light blue
+        const groundColor = 0xb97a20; // brownish orange
         const intensity = 2;
         const light = new THREE.HemisphereLight(skyColor, groundColor, 0.4);
         this.scene.add(light);
@@ -991,8 +991,9 @@ class VoxelGame {
         const playerBlockY2 = Math.floor(this.player.position.y + 1); // Player is 2 blocks tall
 
         const wouldCollideWithPlayer =
-            (newBlockPos.x === playerBlockX && newBlockPos.z === playerBlockZ &&
-                (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2));
+            newBlockPos.x === playerBlockX &&
+            newBlockPos.z === playerBlockZ &&
+            (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2);
         // console.log(
         //     'Block key:',
         //     blockKey,

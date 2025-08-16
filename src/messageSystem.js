@@ -8,7 +8,7 @@ export class MessageSystem {
     }
 
     init() {
-        this.container = document.getElementById('message-container')
+        this.container = document.getElementById('message-container');
     }
 
     addMessage(text, type = 'info') {

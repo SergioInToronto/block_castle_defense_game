@@ -33,7 +33,6 @@ export class Terrain {
             opacity: 0.7,
             side: THREE.DoubleSide,
         });
-
     }
 
     generateWorld() {
@@ -141,15 +140,25 @@ export class Terrain {
         }
 
         // Create instanced meshes
-        const grassInstanced = new THREE.InstancedMesh(this.geometry, this.grassMaterial, grassCount);
+        const grassInstanced = new THREE.InstancedMesh(
+            this.geometry,
+            this.grassMaterial,
+            grassCount
+        );
         const dirtInstanced = new THREE.InstancedMesh(this.geometry, this.dirtMaterial, dirtCount);
-        const stoneInstanced = new THREE.InstancedMesh(this.geometry, this.stoneMaterial, stoneCount);
+        const stoneInstanced = new THREE.InstancedMesh(
+            this.geometry,
+            this.stoneMaterial,
+            stoneCount
+        );
         const cobblestoneInstanced =
             cobblestoneCount > 0
                 ? new THREE.InstancedMesh(this.geometry, this.cobblestoneMaterial, cobblestoneCount)
                 : null;
         const waterInstanced =
-            waterCount > 0 ? new THREE.InstancedMesh(this.geometry, this.waterMaterial, waterCount) : null;
+            waterCount > 0
+                ? new THREE.InstancedMesh(this.geometry, this.waterMaterial, waterCount)
+                : null;
 
         grassInstanced.castShadow = true;
         grassInstanced.receiveShadow = true;
@@ -287,13 +296,13 @@ export class Terrain {
                 material = this.grassMaterial;
                 break;
             case 'dirt':
-                material = this.dirtMaterial
+                material = this.dirtMaterial;
                 break;
             case 'stone':
                 material = this.stoneMaterial;
                 break;
             case 'cobblestone':
-                material = this.cobblestoneMaterial
+                material = this.cobblestoneMaterial;
                 break;
             default:
                 console.error(`Unknown block type: ${blockType}`);
