@@ -255,7 +255,7 @@ export class Terrain {
         for (let y = 50; y >= 0; y--) {
             // Search from high to low
             if (this.world.has(`${blockX},${y},${blockZ}`)) {
-                return y + 1; // Player stands on top of block
+                return y + 1.5; // Player stands on top of block (accounting for 0.5 offset)
             }
         }
         return 0; // Default ground level
