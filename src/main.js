@@ -42,7 +42,7 @@ class VoxelGame {
         );
 
         // Player settings
-        this.spawnPosition = new THREE.Vector3(100, 20, 100);
+        this.spawnPosition = new THREE.Vector3(100.5, 20, 100.5);
         this.player = {
             position: this.spawnPosition.clone(),
             velocity: new THREE.Vector3(0, 0, 0),
@@ -973,14 +973,14 @@ class VoxelGame {
             // Check if block position is valid (not occupied and not colliding with player)
             const blockKey = `${newBlockPos.x},${newBlockPos.y},${newBlockPos.z}`;
             const isOccupied = this.world.has(blockKey);
-            
+
             // Don't place blocks where the player is standing
             const playerBlockX = Math.floor(this.player.position.x);
             const playerBlockZ = Math.floor(this.player.position.z);
             const playerBlockY = Math.floor(this.player.position.y);
             const playerBlockY2 = Math.floor(this.player.position.y + 1); // Player is 2 blocks tall
-            
-            const wouldCollideWithPlayer = 
+
+            const wouldCollideWithPlayer =
                 (newBlockPos.x === playerBlockX && newBlockPos.z === playerBlockZ &&
                  (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2));
             console.log(
