@@ -3,7 +3,7 @@ import { Terrain } from './terrain.js';
 import { MessageSystem } from './messageSystem.js';
 import { debounce } from './utils.js';
 
-const RENDER_DISTANCE = 100; // Maximum render and culling distance
+const RENDER_DISTANCE = 1000; // Maximum render and culling distance
 
 class VoxelGame {
     constructor() {
@@ -37,8 +37,7 @@ class VoxelGame {
             this.blockSize,
             this.waterLevel,
             this.world,
-            this.scene,
-            RENDER_DISTANCE
+            this.scene
         );
 
         // Player settings
@@ -151,11 +150,18 @@ class VoxelGame {
 
     setupLighting() {
         // Ambient light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
-        this.scene.add(ambientLight);
+        // const ambientLight = new THREE.AmbientLight(0x404040, 1.1);
+        // this.scene.add(ambientLight);
+
+        // Hemisphere light (sky and ground)
+        const skyColor = 0xB1E1FF;  // light blue
+        const groundColor = 0xB97A20;  // brownish orange
+        const intensity = 2;
+        const light = new THREE.HemisphereLight(skyColor, groundColor, 0.4);
+        this.scene.add(light);
 
         // Directional light (sun)
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
         directionalLight.position.set(200, 300, 200);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
@@ -955,54 +961,55 @@ class VoxelGame {
     }
 
     placeBlock() {
-        console.log('placeBlock() called');
+        // console.log('placeBlock() called');
         const target = this.getTargetBlock();
-        console.log('Target block:', target);
+        // console.log('Target block:', target);
 
-        if (target && target.face) {
-            // Calculate position for new block based on face normal
-            const normal = target.face.normal;
-            console.log('Face normal:', normal);
-            const newBlockPos = new THREE.Vector3(
-                Math.floor(target.blockPos.x + normal.x),
-                Math.floor(target.blockPos.y + normal.y),
-                Math.floor(target.blockPos.z + normal.z)
-            );
-            console.log('New block position:', newBlockPos);
+        if (!target || !target.face) {
+            // console.log('No target found or no face');
+            return;
+        }
 
-            // Check if block position is valid (not occupied and not colliding with player)
-            const blockKey = `${newBlockPos.x},${newBlockPos.y},${newBlockPos.z}`;
-            const isOccupied = this.world.has(blockKey);
+        // Calculate position for new block based on face normal
+        const normal = target.face.normal;
+        // console.log('Face normal:', normal);
+        const newBlockPos = new THREE.Vector3(
+            Math.floor(target.blockPos.x + normal.x),
+            Math.floor(target.blockPos.y + normal.y),
+            Math.floor(target.blockPos.z + normal.z)
+        );
+        // console.log('New block position:', newBlockPos);
 
-            // Don't place blocks where the player is standing
-            const playerBlockX = Math.floor(this.player.position.x);
-            const playerBlockZ = Math.floor(this.player.position.z);
-            const playerBlockY = Math.floor(this.player.position.y);
-            const playerBlockY2 = Math.floor(this.player.position.y + 1); // Player is 2 blocks tall
+        // Check if block position is valid (not occupied and not colliding with player)
+        const blockKey = `${newBlockPos.x},${newBlockPos.y},${newBlockPos.z}`;
+        const isOccupied = this.world.has(blockKey);
 
-            const wouldCollideWithPlayer =
-                (newBlockPos.x === playerBlockX && newBlockPos.z === playerBlockZ &&
-                 (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2));
-            console.log(
-                'Block key:',
-                blockKey,
-                'Occupied:',
-                isOccupied,
-                'Would collide with player:',
-                wouldCollideWithPlayer
-            );
+        // Don't place blocks where the player is standing
+        const playerBlockX = Math.floor(this.player.position.x);
+        const playerBlockZ = Math.floor(this.player.position.z);
+        const playerBlockY = Math.floor(this.player.position.y);
+        const playerBlockY2 = Math.floor(this.player.position.y + 1); // Player is 2 blocks tall
 
-            if (!isOccupied && !wouldCollideWithPlayer) {
-                // Add block to world
-                this.world.set(blockKey, true);
-                console.log('Block added to world');
+        const wouldCollideWithPlayer =
+            (newBlockPos.x === playerBlockX && newBlockPos.z === playerBlockZ &&
+                (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2));
+        // console.log(
+        //     'Block key:',
+        //     blockKey,
+        //     'Occupied:',
+        //     isOccupied,
+        //     'Would collide with player:',
+        //     wouldCollideWithPlayer
+        // );
 
-                // Add visual representation
-                this.terrain.addBlock(newBlockPos.x, newBlockPos.y, newBlockPos.z, 'grass');
-                console.log('Visual block added');
-            }
-        } else {
-            console.log('No target found or no face');
+        if (!isOccupied && !wouldCollideWithPlayer) {
+            // Add block to world
+            this.world.set(blockKey, true);
+            console.log('Block added to world');
+
+            // Add visual representation
+            this.terrain.addBlock(newBlockPos.x, newBlockPos.y, newBlockPos.z, 'grass');
+            console.log('Visual block added');
         }
     }
 

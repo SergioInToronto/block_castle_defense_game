@@ -1,16 +1,45 @@
 import * as THREE from 'three';
 
 export class Terrain {
-    constructor(worldSize, blockSize, waterLevel, world, scene, render_distance) {
+    constructor(worldSize, blockSize, waterLevel, world, scene) {
         this.worldSize = worldSize;
         this.blockSize = blockSize;
         this.waterLevel = waterLevel;
         this.world = world;
         this.scene = scene;
+
+        this.initialize();
+    }
+
+    initialize() {
+        // geometry of all blocks
+        this.geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
+
+        const textureLoader = new THREE.TextureLoader();
+
+        // Create materials
+        const grassTexture = textureLoader.load('./assets/grass1.png');
+        this.grassMaterial = new THREE.MeshLambertMaterial({ map: grassTexture });
+
+        const dirtTexture = textureLoader.load('./assets/dirt1.png');
+        this.dirtMaterial = new THREE.MeshLambertMaterial({ map: dirtTexture });
+
+        this.stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+        this.cobblestoneMaterial = new THREE.MeshLambertMaterial({ color: 0x6b6b6b });
+
+        this.waterMaterial = new THREE.MeshLambertMaterial({
+            color: 0x4da6ff,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+        });
+
     }
 
     generateWorld() {
         console.log('Geerting world...');
+        // TODO: this should probably move to main.js or a dedicated world generator class
+
         // Generate terrain data first
         const terrainData = {};
         for (let x = 0; x < this.worldSize; x += 1) {
@@ -35,20 +64,6 @@ export class Terrain {
     }
 
     createInstancedTerrain(terrainData) {
-        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
-
-        // Create materials
-        const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
-        const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-        const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
-        const cobblestoneMaterial = new THREE.MeshLambertMaterial({ color: 0x6b6b6b });
-        const waterMaterial = new THREE.MeshLambertMaterial({
-            color: 0x4da6ff,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide,
-        });
-
         // Initialize block data storage
         this.blockData = {
             grass: [],
@@ -126,15 +141,15 @@ export class Terrain {
         }
 
         // Create instanced meshes
-        const grassInstanced = new THREE.InstancedMesh(geometry, grassMaterial, grassCount);
-        const dirtInstanced = new THREE.InstancedMesh(geometry, dirtMaterial, dirtCount);
-        const stoneInstanced = new THREE.InstancedMesh(geometry, stoneMaterial, stoneCount);
+        const grassInstanced = new THREE.InstancedMesh(this.geometry, this.grassMaterial, grassCount);
+        const dirtInstanced = new THREE.InstancedMesh(this.geometry, this.dirtMaterial, dirtCount);
+        const stoneInstanced = new THREE.InstancedMesh(this.geometry, this.stoneMaterial, stoneCount);
         const cobblestoneInstanced =
             cobblestoneCount > 0
-                ? new THREE.InstancedMesh(geometry, cobblestoneMaterial, cobblestoneCount)
+                ? new THREE.InstancedMesh(this.geometry, this.cobblestoneMaterial, cobblestoneCount)
                 : null;
         const waterInstanced =
-            waterCount > 0 ? new THREE.InstancedMesh(geometry, waterMaterial, waterCount) : null;
+            waterCount > 0 ? new THREE.InstancedMesh(this.geometry, this.waterMaterial, waterCount) : null;
 
         grassInstanced.castShadow = true;
         grassInstanced.receiveShadow = true;
@@ -269,19 +284,19 @@ export class Terrain {
         let material;
         switch (blockType) {
             case 'grass':
-                material = new THREE.MeshLambertMaterial({ color: 0x4a7c59 });
+                material = this.grassMaterial;
                 break;
             case 'dirt':
-                material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+                material = this.dirtMaterial
                 break;
             case 'stone':
-                material = new THREE.MeshLambertMaterial({ color: 0x696969 });
+                material = this.stoneMaterial;
                 break;
             case 'cobblestone':
-                material = new THREE.MeshLambertMaterial({ color: 0x6b6b6b });
+                material = this.cobblestoneMaterial
                 break;
             default:
-                material = new THREE.MeshLambertMaterial({ color: 0x4a7c59 }); // Default to grass
+                console.error(`Unknown block type: ${blockType}`);
         }
 
         const mesh = new THREE.Mesh(geometry, material);
