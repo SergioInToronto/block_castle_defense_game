@@ -916,22 +916,36 @@ class VoxelGame {
 
                 console.log('Instance position:', position);
 
+                // Adjust for the 0.5 offset to get the actual block coordinate
+                const blockCoord = new THREE.Vector3(
+                    Math.floor(position.x),
+                    Math.floor(position.y),
+                    Math.floor(position.z)
+                );
+
                 return {
                     distance: intersection.distance,
                     point: intersection.point,
                     face: intersection.face,
-                    blockPos: position,
+                    blockPos: blockCoord,
                 };
             } else {
                 // Regular mesh (placed blocks)
                 const blockPos = intersection.object.position.clone();
                 console.log('Regular mesh position:', blockPos);
 
+                // Adjust for the 0.5 offset to get the actual block coordinate
+                const blockCoord = new THREE.Vector3(
+                    Math.floor(blockPos.x),
+                    Math.floor(blockPos.y),
+                    Math.floor(blockPos.z)
+                );
+
                 return {
                     distance: intersection.distance,
                     point: intersection.point,
                     face: intersection.face,
-                    blockPos: blockPos,
+                    blockPos: blockCoord,
                 };
             }
         }
@@ -959,17 +973,26 @@ class VoxelGame {
             // Check if block position is valid (not occupied and not colliding with player)
             const blockKey = `${newBlockPos.x},${newBlockPos.y},${newBlockPos.z}`;
             const isOccupied = this.world.has(blockKey);
-            const hasCollision = this.checkCollision(newBlockPos.x, newBlockPos.y, newBlockPos.z);
+            
+            // Don't place blocks where the player is standing
+            const playerBlockX = Math.floor(this.player.position.x);
+            const playerBlockZ = Math.floor(this.player.position.z);
+            const playerBlockY = Math.floor(this.player.position.y);
+            const playerBlockY2 = Math.floor(this.player.position.y + 1); // Player is 2 blocks tall
+            
+            const wouldCollideWithPlayer = 
+                (newBlockPos.x === playerBlockX && newBlockPos.z === playerBlockZ &&
+                 (newBlockPos.y === playerBlockY || newBlockPos.y === playerBlockY2));
             console.log(
                 'Block key:',
                 blockKey,
                 'Occupied:',
                 isOccupied,
-                'Collision:',
-                hasCollision
+                'Would collide with player:',
+                wouldCollideWithPlayer
             );
 
-            if (!isOccupied && !hasCollision) {
+            if (!isOccupied && !wouldCollideWithPlayer) {
                 // Add block to world
                 this.world.set(blockKey, true);
                 console.log('Block added to world');

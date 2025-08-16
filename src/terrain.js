@@ -167,7 +167,7 @@ export class Terrain {
 
                 // Place terrain blocks
                 for (let y = 0; y <= height; y++) {
-                    matrix.setPosition(x, y, z);
+                    matrix.setPosition(x + 0.5, y + 0.5, z + 0.5);
 
                     if (y === height) {
                         grassInstanced.setMatrixAt(grassIndex++, matrix);
@@ -181,7 +181,7 @@ export class Terrain {
                 // Place water blocks
                 if (height < this.waterLevel && waterInstanced) {
                     for (let y = height + 1; y <= this.waterLevel; y++) {
-                        matrix.setPosition(x, y, z);
+                        matrix.setPosition(x + 0.5, y + 0.5, z + 0.5);
                         waterInstanced.setMatrixAt(waterIndex++, matrix);
                     }
                 }
@@ -214,7 +214,7 @@ export class Terrain {
 
                     if (isWall && !isDoorway) {
                         for (let y = groundHeight + 1; y <= groundHeight + boxHeight; y++) {
-                            matrix.setPosition(x, y, z);
+                            matrix.setPosition(x + 0.5, y + 0.5, z + 0.5);
                             cobblestoneInstanced.setMatrixAt(cobblestoneIndex++, matrix);
                         }
                     }
@@ -285,7 +285,7 @@ export class Terrain {
         }
 
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(x, y, z);
+        mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
