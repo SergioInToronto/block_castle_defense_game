@@ -160,7 +160,7 @@ class VoxelGame {
         // Show welcome message
         this.messageSystem.addMessage('Welcome to Block Castle Defense!', 'info');
 
-        console.log('3D Voxel Game initialized!');
+        // console.log('3D Voxel Game initialized!');
     }
 
     setupLighting() {
@@ -344,7 +344,7 @@ class VoxelGame {
     }
 
     createHeldBlock() {
-        console.log('Creating held item...  ');
+        // console.log('Creating held item...  ');
         const geometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
         const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
 
@@ -527,24 +527,7 @@ class VoxelGame {
         });
 
         // Left click for block placement or gremlin interaction
-        this.renderer.domElement.addEventListener('mousedown', event => {
-            console.log(
-                'Mouse down event:',
-                event.button,
-                'Pointer locked:',
-                document.pointerLockElement === this.renderer.domElement
-            );
-            if (event.button === 0 && document.pointerLockElement === this.renderer.domElement) {
-                // Left click while pointer is locked
-                // Check if clicking on a gremlin first
-                const gremlinHit = this.checkGremlinClick();
-                if (!gremlinHit) {
-                    // If no gremlin was hit, try to place a block
-                    console.log('Calling placeBlock()');
-                    this.placeBlock();
-                }
-            }
-        });
+        this.renderer.domElement.addEventListener('mousedown', this.handleClick.bind(this));
 
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -552,6 +535,24 @@ class VoxelGame {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
+    }
+
+    handleClick(event) {
+        // console.log(
+        //     'Mouse down event:',
+        //     event.button,
+        //     'Pointer locked:',
+        //     document.pointerLockElement === this.renderer.domElement
+        // );
+        if (event.button === 0 && document.pointerLockElement === this.renderer.domElement) {
+            // Left click while pointer is locked
+            // Check if clicking on a gremlin first
+            const gremlinHit = this.checkAndHandleGremlinClick();
+            if (!gremlinHit) {
+                // If no gremlin was hit, try to place a block
+                this.placeBlock();
+            }
+        }
     }
 
     createPig() {
@@ -898,7 +899,7 @@ class VoxelGame {
         return false;
     }
 
-    checkGremlinClick() {
+    checkAndHandleGremlinClick() {
         // Cast ray from camera center
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
 
@@ -932,7 +933,7 @@ class VoxelGame {
                 gremlin.velocity.z = pushDirection.z * 40;
                 gremlin.velocity.y = 8; // Add some upward velocity for a nice arc
 
-                console.log('Pushed gremlin with velocity:', gremlin.velocity);
+                // console.log('Pushed gremlin with velocity:', gremlin.velocity);
                 return true;
             }
         }
@@ -941,11 +942,11 @@ class VoxelGame {
     }
 
     getTargetBlock() {
-        console.log('getTargetBlock() called');
+        // console.log('getTargetBlock() called');
         // Cast ray from camera center
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-        console.log('Raycaster origin:', this.raycaster.ray.origin);
-        console.log('Raycaster direction:', this.raycaster.ray.direction);
+        // console.log('Raycaster origin:', this.raycaster.ray.origin);
+        // console.log('Raycaster direction:', this.raycaster.ray.direction);
 
         // Get all meshes in the scene that could be blocks
         const meshesToCheck = [];
@@ -961,20 +962,20 @@ class VoxelGame {
             }
         });
 
-        console.log('Meshes to check:', meshesToCheck.length);
+        // console.log('Meshes to check:', meshesToCheck.length);
 
         // Cast ray against all block meshes
         const intersections = this.raycaster.intersectObjects(meshesToCheck, false);
-        console.log('Raw intersections:', intersections.length);
+        // console.log('Raw intersections:', intersections.length);
 
         if (intersections.length > 0) {
             const intersection = intersections[0];
-            console.log('First intersection:', intersection);
+            // console.log('First intersection:', intersection);
 
             // For instanced meshes, we need to get the instance position
             if (intersection.object instanceof THREE.InstancedMesh) {
                 const instanceId = intersection.instanceId;
-                console.log('Instance ID:', instanceId);
+                // console.log('Instance ID:', instanceId);
 
                 // Get the world position of this instance
                 const matrix = new THREE.Matrix4();
@@ -982,7 +983,7 @@ class VoxelGame {
                 const position = new THREE.Vector3();
                 position.setFromMatrixPosition(matrix);
 
-                console.log('Instance position:', position);
+                // console.log('Instance position:', position);
 
                 // Adjust for the 0.5 offset to get the actual block coordinate
                 const blockCoord = new THREE.Vector3(
@@ -1000,7 +1001,7 @@ class VoxelGame {
             } else {
                 // Regular mesh (placed blocks)
                 const blockPos = intersection.object.position.clone();
-                console.log('Regular mesh position:', blockPos);
+                // console.log('Regular mesh position:', blockPos);
 
                 // Adjust for the 0.5 offset to get the actual block coordinate
                 const blockCoord = new THREE.Vector3(
@@ -1018,7 +1019,7 @@ class VoxelGame {
             }
         }
 
-        console.log('No intersections found');
+        // console.log('No intersections found');
         return null;
     }
 
@@ -1068,11 +1069,11 @@ class VoxelGame {
         if (!isOccupied && !wouldCollideWithPlayer) {
             // Add block to world
             this.world.set(blockKey, true);
-            console.log('Block added to world');
+            // console.log('Block added to world');
 
             // Add visual representation
             this.terrain.addBlock(newBlockPos.x, newBlockPos.y, newBlockPos.z, 'grass');
-            console.log('Visual block added');
+            // console.log('Visual block added');
         }
     }
 
