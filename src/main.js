@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import { Terrain } from './terrain.js';
-import { MessageSystem } from './messageSystem.js';
+
 import { debounce } from './utils.js';
+import { Enemies } from './enemies.js';
+import { MessageSystem } from './messageSystem.js';
+import { Terrain } from './terrain.js';
 
 const RENDER_DISTANCE = 1000; // Maximum render and culling distance
 
@@ -85,6 +87,10 @@ class VoxelGame {
             legs: [],
         };
 
+        // Enimies
+        this.enimies = new Enemies(this.scene, this.terrain, this.worldSize);
+        this.gremlinsSpawned = false;
+
         // Inventory system
         this.inventory = {
             hotbar: new Array(6).fill(null),
@@ -141,6 +147,15 @@ class VoxelGame {
 
         // Setup held item display
         this.setupHeldItemDisplay();
+
+        // Set timeout for gremlin spawning
+        setTimeout(() => {
+            if (!this.gremlinsSpawned) {
+                this.gremlinsSpawned = true;
+                this.enimies.spawnGremlins();
+                this.messageSystem.addMessage('Gremlins have spawned!', 'warning');
+            }
+        }, 3000); // short timeout for testing
 
         // Show welcome message
         this.messageSystem.addMessage('Welcome to Block Castle Defense!', 'info');
@@ -715,6 +730,7 @@ class VoxelGame {
         if (this.keys['KeyS']) direction.z += 1;
         if (this.keys['KeyA']) direction.x -= 1;
         if (this.keys['KeyD']) direction.x += 1;
+        if (this.keys['KeyN']) debounce(() => console.log("scene:", this.scene), 1000);
 
         // Apply camera rotation to movement direction
         direction.applyEuler(new THREE.Euler(0, this.yaw, 0));
@@ -1033,6 +1049,8 @@ class VoxelGame {
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
         this.updatePig(deltaTime);
+        this.enimies.updateAll(deltaTime)
+
         this.updateCamera();
         this.updateCoordinateDisplay();
         this.updateFPS();
