@@ -171,7 +171,6 @@ class VoxelGame {
         // Hemisphere light (sky and ground)
         const skyColor = 0xb1e1ff; // light blue
         const groundColor = 0xb97a20; // brownish orange
-        const intensity = 2;
         const light = new THREE.HemisphereLight(skyColor, groundColor, 0.4);
         this.scene.add(light);
 
@@ -527,7 +526,7 @@ class VoxelGame {
             }
         });
 
-        // Left click for block placement
+        // Left click for block placement or gremlin interaction
         this.renderer.domElement.addEventListener('mousedown', event => {
             console.log(
                 'Mouse down event:',
@@ -537,8 +536,13 @@ class VoxelGame {
             );
             if (event.button === 0 && document.pointerLockElement === this.renderer.domElement) {
                 // Left click while pointer is locked
-                console.log('Calling placeBlock()');
-                this.placeBlock();
+                // Check if clicking on a gremlin first
+                const gremlinHit = this.checkGremlinClick();
+                if (!gremlinHit) {
+                    // If no gremlin was hit, try to place a block
+                    console.log('Calling placeBlock()');
+                    this.placeBlock();
+                }
             }
         });
 
@@ -730,7 +734,7 @@ class VoxelGame {
         if (this.keys['KeyS']) direction.z += 1;
         if (this.keys['KeyA']) direction.x -= 1;
         if (this.keys['KeyD']) direction.x += 1;
-        if (this.keys['KeyN']) debounce(() => console.log("scene:", this.scene), 1000);
+        if (this.keys['KeyN']) debounce(() => console.log('scene:', this.scene), 1000);
 
         // Apply camera rotation to movement direction
         direction.applyEuler(new THREE.Euler(0, this.yaw, 0));
@@ -894,6 +898,48 @@ class VoxelGame {
         return false;
     }
 
+    checkGremlinClick() {
+        // Cast ray from camera center
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+
+        // Get all gremlin meshes
+        const gremlinMeshes = [];
+        this.enimies.gremlins.forEach(gremlin => {
+            gremlin.mesh.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                    child.userData.gremlin = gremlin; // Store reference to gremlin
+                    gremlinMeshes.push(child);
+                }
+            });
+        });
+
+        // Cast ray against gremlin meshes
+        const intersections = this.raycaster.intersectObjects(gremlinMeshes, true);
+
+        if (intersections.length > 0) {
+            const hit = intersections[0];
+            const gremlin = hit.object.userData.gremlin;
+
+            if (gremlin) {
+                // Calculate push direction (from player to gremlin)
+                const pushDirection = new THREE.Vector3();
+                pushDirection.subVectors(gremlin.position, this.player.position);
+                pushDirection.y = 0; // Keep it horizontal
+                pushDirection.normalize();
+
+                // Apply push velocity
+                gremlin.velocity.x = pushDirection.x * 40;
+                gremlin.velocity.z = pushDirection.z * 40;
+                gremlin.velocity.y = 8; // Add some upward velocity for a nice arc
+
+                console.log('Pushed gremlin with velocity:', gremlin.velocity);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     getTargetBlock() {
         console.log('getTargetBlock() called');
         // Cast ray from camera center
@@ -1049,7 +1095,7 @@ class VoxelGame {
         this.handleInput(deltaTime);
         this.updatePhysics(deltaTime);
         this.updatePig(deltaTime);
-        this.enimies.updateAll(deltaTime)
+        this.enimies.updateAll(deltaTime);
 
         this.updateCamera();
         this.updateCoordinateDisplay();

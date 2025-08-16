@@ -13,8 +13,6 @@ export class Enemies {
         this.gremlins.forEach(gremlin => {
             this.updateGremlin(gremlin, deltaTime);
         });
-
-
     }
 
     createGremlin(position) {
@@ -89,15 +87,12 @@ export class Enemies {
             animationTimer: 0,
         };
 
-        console.log("################ Spawn gremlin at", position, this.scene)
-
         this.gremlins.push(gremlin);
         return gremlin;
-
     }
 
     spawnGremlins() {
-        const spawnPosition = new THREE.Vector3(30, 20, 30);
+        const spawnPosition = new THREE.Vector3(135, 20, 35);
 
         // Spawn 5 gremlins
         for (let i = 0; i < 5; i++) {
@@ -119,25 +114,39 @@ export class Enemies {
         gremlin.walkTimer += deltaTime;
         gremlin.animationTimer += deltaTime;
 
-        // Random direction changes (more erratic than pig)
-        if (gremlin.walkTimer > 1 + Math.random() * 2) {
-            gremlin.direction = Math.random() * Math.PI * 2;
-            gremlin.walkTimer = 0;
+        // Check if gremlin is being pushed (has horizontal velocity)
+        const isBeingPushed =
+            Math.abs(gremlin.velocity.x) > 0.1 || Math.abs(gremlin.velocity.z) > 0.1;
+
+        // Only do random walking if not being pushed
+        if (!isBeingPushed) {
+            // Random direction changes (more erratic than pig)
+            if (gremlin.walkTimer > 1 + Math.random() * 2) {
+                gremlin.direction = Math.random() * Math.PI * 2;
+                gremlin.walkTimer = 0;
+            }
+
+            // Normal walking movement
+            const moveDirection = new THREE.Vector3(
+                Math.sin(gremlin.direction) * gremlin.speed * deltaTime,
+                0,
+                Math.cos(gremlin.direction) * gremlin.speed * deltaTime
+            );
+            gremlin.position.add(moveDirection);
         }
 
         // Apply gravity
         gremlin.velocity.y -= 25 * deltaTime;
 
-        // Movement
-        const moveDirection = new THREE.Vector3(
-            Math.sin(gremlin.direction) * gremlin.speed * deltaTime,
-            0,
-            Math.cos(gremlin.direction) * gremlin.speed * deltaTime
-        );
-
-        // Update position
-        gremlin.position.add(moveDirection);
+        // Apply horizontal velocity (from being pushed)
+        gremlin.position.x += gremlin.velocity.x * deltaTime;
+        gremlin.position.z += gremlin.velocity.z * deltaTime;
         gremlin.position.y += gremlin.velocity.y * deltaTime;
+
+        // Apply friction to horizontal velocity
+        const friction = 0.9; // Adjust this value to control how quickly gremlins slow down
+        gremlin.velocity.x *= friction;
+        gremlin.velocity.z *= friction;
 
         // Ground collision
         const groundY = this.terrain.getGroundHeight(gremlin.position.x, gremlin.position.z);
