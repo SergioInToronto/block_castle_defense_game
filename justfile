@@ -10,7 +10,7 @@ build:
 
 # Preview production build
 preview:
-    npm run preview
+    npm run preview -- --base=/block_castle_defense_game/
 
 # Install dependencies
 install:
