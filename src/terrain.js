@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import grassTextureUrl from '../assets/grass1.png';
+import dirtTextureUrl from '../assets/dirt1.png';
 
 export class Terrain {
     constructor(worldSize, blockSize, waterLevel, world, scene) {
@@ -18,10 +20,10 @@ export class Terrain {
         const textureLoader = new THREE.TextureLoader();
 
         // Create materials
-        const grassTexture = textureLoader.load('./assets/grass1.png');
+        const grassTexture = textureLoader.load(grassTextureUrl);
         this.grassMaterial = new THREE.MeshLambertMaterial({ map: grassTexture });
 
-        const dirtTexture = textureLoader.load('./assets/dirt1.png');
+        const dirtTexture = textureLoader.load(dirtTextureUrl);
         this.dirtMaterial = new THREE.MeshLambertMaterial({ map: dirtTexture });
 
         this.stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
